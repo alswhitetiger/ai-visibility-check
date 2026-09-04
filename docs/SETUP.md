@@ -1,5 +1,19 @@
 # 설정 가이드
 
+## 배포 현황
+
+| 항목 | 값 |
+|---|---|
+| 프론트 (GitHub Pages) | https://alswhitetiger.github.io/ai-visibility-check/ |
+| Worker (Cloudflare) | https://ai-visibility.ai-visibility-worker.workers.dev |
+| D1 | `ai-visibility` (APAC) · `92c0a136-cec9-43f0-98be-a15b79f0cf01` |
+| 저장소 변수 | `VITE_API_BASE` = 위 Worker 주소 |
+
+**제출 링크는 GitHub Pages 주소 하나만 쓴다.** Worker는 뒤에서만 호출된다.
+
+남은 것: AI 키 등록 (`GEMINI_API_KEY`, `JUDGE_CODE`). 키가 없어도 규칙 기반
+진단은 정상 동작하며, AI 실제 응답 영역만 "대기 중"으로 표시된다.
+
 ## 0단계 — 배포 방식 (완료됨)
 
 GitHub Actions 워크플로가 활성화되어 있다. `main` 의 `web/**` 이 바뀌면
