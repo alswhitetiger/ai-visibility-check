@@ -13,7 +13,14 @@ const PROVIDERS = [
 ];
 
 const TIMEOUT_MS = 25000;
-const RETRY_DELAYS = [1200, 3000]; // 429는 같은 단계에서 먼저 재시도한다.
+
+const RETRY_DELAYS = [1200, 3000];
+
+// 재시도로 이득이 있는 것만 넣는다.
+// region(지역 제한)은 요청을 처리한 Cloudflare 콜로의 egress 위치에 달려 있어
+// 같은 요청 안에서 다시 시도해도 결과가 바뀌지 않는다. 실측 4회 모두 동일했다.
+// 지연만 늘어나므로 재시도하지 않고, 보관해 둔 이전 응답으로 넘긴다(index.js).
+const RETRYABLE = new Set(['rate_limit']);
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -26,10 +33,14 @@ class ProviderError extends Error {
   }
 }
 
-function classify(status) {
+function classify(status, body) {
   if (status === 429) return 'rate_limit';
   if (status >= 500) return 'server';
   if (status === 401 || status === 403) return 'auth';
+  // Gemini 무료 티어는 요청이 나간 위치를 지원 지역으로 인정하지 않으면
+  // 400 FAILED_PRECONDITION 을 낸다. 키나 요청이 잘못된 게 아니라 위치 문제라
+  // 재시도 대상으로 분류한다.
+  if (status === 400 && /location is not supported/i.test(body || '')) return 'region';
   return 'client';
 }
 
@@ -38,7 +49,10 @@ async function post(url, init) {
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(url, { ...init, signal: ctl.signal });
-    if (!res.ok) throw new ProviderError(classify(res.status), res.status, await res.text());
+    if (!res.ok) {
+      const body = await res.text();
+      throw new ProviderError(classify(res.status, body), res.status, body);
+    }
     return await res.json();
   } catch (e) {
     if (e instanceof ProviderError) throw e;
@@ -126,8 +140,8 @@ export async function askAI(env, { system, user }) {
         return { ok: true, provider: p.name, model, json };
       } catch (e) {
         const kind = e.kind || 'network';
-        // 분당 한도는 같은 단계에서 잠깐 기다렸다 다시 시도한다.
-        if (kind === 'rate_limit' && attempt < RETRY_DELAYS.length) {
+        // 분당 한도와 지역 제한은 같은 단계에서 잠깐 기다렸다 다시 시도한다.
+        if (RETRYABLE.has(kind) && attempt < RETRY_DELAYS.length) {
           await sleep(RETRY_DELAYS[attempt]);
           continue;
         }
