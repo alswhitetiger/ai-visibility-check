@@ -46,7 +46,9 @@ async function writeCache(env, result) {
     'quadrant=excluded.quadrant, result_json=excluded.result_json, provider=excluded.provider, ' +
     'model=excluded.model, created_at=excluded.created_at'
   ).bind(
-    result.url, result.host, result.aiScore, result.uxScore, result.quadrant,
+    // uxScore 는 수집이 차단된 경우 null 이다. 컬럼은 숫자만 받으므로 0 으로 넣는다.
+    // 화면이 쓰는 값은 result_json 쪽이라 표시에는 영향이 없다.
+    result.url, result.host, result.aiScore, result.uxScore ?? 0, result.quadrant,
     JSON.stringify(result), result.ai?.provider ?? null, result.ai?.model ?? null, now
   ).run();
 }
@@ -95,6 +97,13 @@ async function handleScan(request, env, origin) {
   }
 
   const result = await diagnose(target.href);
+  if (result.error === 'BLOCKED_BY_SITE') {
+    return json({
+      error: 'BLOCKED_BY_SITE',
+      message: '이 사이트는 자동 접근을 차단하고 있어 진단할 수 없습니다. '
+             + '차단 자체가 AI 크롤러에게도 동일하게 적용될 가능성이 큽니다.',
+    }, 200, origin);
+  }
   if (result.error) return json(result, 502, origin);
 
   result.quadrantLabel = QUADRANT_LABEL[result.quadrant];

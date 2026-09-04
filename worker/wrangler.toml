@@ -9,6 +9,10 @@ DAILY_SCAN_LIMIT = "400"
 IP_DAILY_LIMIT = "5"
 CACHE_TTL_HOURS = "24"
 
+# 사용할 모델. API 결제를 연결하면 상위 모델로 바꾼다.
+# 무료 티어에서 gemini-3.5-flash 이상은 503(수요 폭주), pro 계열은 429(결제 필요)가 난다.
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+
 # D1 바인딩. `wrangler d1 create ai-visibility` 실행 후 id를 채운다.
 [[d1_databases]]
 binding = "DB"

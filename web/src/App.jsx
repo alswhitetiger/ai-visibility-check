@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
 
 const QUADRANT = {
+  crawl_blocked: {
+    title: '수집 차단',
+    desc: 'robots.txt가 모든 크롤러를 막고 있습니다. AI도 이 사이트를 읽지 못합니다',
+    tone: 'bad',
+  },
   healthy: { title: '정상', desc: '사람도 AI도 찾을 수 있습니다', tone: 'ok' },
   ai_invisible: { title: 'AI 시대에 사라질 가게', desc: '지금은 팔리지만 AI가 못 찾습니다', tone: 'warn' },
   leaking: { title: '유입은 되는데 새는 중', desc: 'AI는 찾지만 사람이 못 삽니다', tone: 'warn' },
@@ -115,7 +120,8 @@ export default function App() {
     try {
       const res = await fetch(API_BASE + '/api/scan?url=' + encodeURIComponent(url.trim()));
       const data = await res.json();
-      if (!res.ok) {
+      // 한도 초과(429)와 사이트 차단(200 + error) 모두 안내 문구로 처리한다.
+      if (!res.ok || data.error) {
         setState({ status: 'limited', message: data.message || '지금은 분석할 수 없습니다.' });
         return;
       }
@@ -165,12 +171,22 @@ export default function App() {
             <span className="host">{d.host}</span>
           </div>
 
-          <Quadrant ai={d.aiScore} ux={d.uxScore} />
-
-          <div className="scores">
-            <ScoreBar label="AI 가시성" value={d.aiScore} hint="AI가 우리를 찾고 이해할 수 있는가" />
-            <ScoreBar label="구매여정" value={d.uxScore} hint="사람이 들어와서 살 수 있는가" />
-          </div>
+          {/* 수집이 차단된 사이트는 구매여정을 측정하지 못했으므로 사분면을 그리지 않는다. */}
+          {!d.crawlBlocked && (
+            <>
+              <Quadrant ai={d.aiScore} ux={d.uxScore} />
+              <div className="scores">
+                <ScoreBar label="AI 가시성" value={d.aiScore} hint="AI가 우리를 찾고 이해할 수 있는가" />
+                <ScoreBar label="구매여정" value={d.uxScore} hint="사람이 들어와서 살 수 있는가" />
+              </div>
+            </>
+          )}
+          {d.crawlBlocked && (
+            <p className="notice">
+              robots.txt의 차단 지시를 따라 페이지를 수집하지 않았습니다.
+              그래서 구매여정 점수는 측정하지 못했습니다.
+            </p>
+          )}
 
           {d.fixes?.length > 0 && (
             <section className="fixes">

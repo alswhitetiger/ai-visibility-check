@@ -76,13 +76,52 @@ function attr(html, re) {
   return m ? m[1].trim() : '';
 }
 
+// 봇 차단/자동화 검사 페이지를 실제 콘텐츠로 오인하지 않기 위한 판별.
+// 이걸 놓치면 "차단당해서 못 읽은 것"을 "AI가 읽을 수 없는 사이트"로 잘못 진단한다.
+const CHALLENGE_MARKERS = [
+  'Attention Required! | Cloudflare',
+  '/cdn-cgi/challenge-platform',
+  'cf-browser-verification',
+  'Just a moment...',
+  'Checking your browser before accessing',
+  'Request unsuccessful. Incapsula',
+  'captcha-delivery.com',
+];
+
+function looksBlocked(html) {
+  return CHALLENGE_MARKERS.some(m => html.includes(m));
+}
+
 export async function diagnose(targetUrl) {
   const u = new URL(targetUrl);
   const origin = u.origin;
 
-  const [page, robots, llms, sitemap] = await Promise.all([
+  // robots.txt 를 먼저 본다. 우리를 막고 있으면 페이지를 아예 가져오지 않는다.
+  // 화면에 "robots.txt 를 따릅니다"라고 밝힌 이상 실제로 따라야 한다.
+  const robots = await get(origin + '/robots.txt');
+  const robotsInfo = robots.ok ? parseRobots(robots.text) : { blocked: [], blockedAll: false };
+
+  if (robotsInfo.blockedAll) {
+    return {
+      url: u.href,
+      host: u.host,
+      crawlBlocked: true,
+      quadrant: 'crawl_blocked',
+      aiScore: 0,
+      uxScore: null,
+      checks: [],
+      fixes: [{
+        id: 'ai_crawler',
+        label: 'robots.txt 가 모든 크롤러를 차단하고 있습니다',
+        why: 'AI 크롤러도 여기서 막힙니다. 검색과 AI 답변 양쪽에서 사이트가 보이지 않게 되므로, '
+           + '차단이 의도한 것인지 먼저 확인해야 합니다. 우리도 이 지시를 따라 페이지를 수집하지 않았습니다.',
+      }],
+      scannedAt: Date.now(),
+    };
+  }
+
+  const [page, llms, sitemap] = await Promise.all([
     get(u.href),
-    get(origin + '/robots.txt'),
     get(origin + '/llms.txt'),
     get(origin + '/sitemap.xml'),
   ]);
@@ -90,11 +129,13 @@ export async function diagnose(targetUrl) {
   if (!page.ok) {
     return { error: 'FETCH_FAILED', status: page.status, url: u.href };
   }
+  if (looksBlocked(page.text)) {
+    return { error: 'BLOCKED_BY_SITE', status: page.status, url: u.href };
+  }
 
   const html = page.text;
   const body = textOf(html);
   const ld = jsonLdBlocks(html);
-  const robotsInfo = robots.ok ? parseRobots(robots.text) : { blocked: [], blockedAll: false };
 
   const title = attr(html, /<title[^>]*>([\s\S]*?)<\/title>/i);
   const desc = attr(html, /<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i);
@@ -237,6 +278,7 @@ export async function diagnose(targetUrl) {
 }
 
 export const QUADRANT_LABEL = {
+  crawl_blocked: '수집 차단 — robots.txt 가 모든 크롤러를 막고 있어 AI도 읽지 못합니다',
   healthy: '정상 — 사람도 AI도 찾을 수 있습니다',
   ai_invisible: 'AI 시대에 사라질 가게 — 지금은 팔리지만 AI가 못 찾습니다',
   leaking: '유입은 되는데 새는 중 — AI는 찾지만 사람이 못 삽니다',

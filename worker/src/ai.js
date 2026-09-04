@@ -3,11 +3,13 @@
 // 앞 단계가 한도(429)나 장애(5xx/타임아웃)를 내면 다음 단계로 넘어간다.
 // 키 오류(4xx)는 폴백하지 않는다. 키 하나가 잘못됐을 때 셋을 다 태우지 않기 위해서다.
 
+// 모델은 wrangler.toml 의 vars 로 덮어쓸 수 있다.
+// 무료 티어에서는 flash-lite 만 안정적이다. 상위 모델은 503(수요 폭주)이 잦고
+// pro 계열은 429(결제 필요)가 난다. API 결제를 연결하면 GEMINI_MODEL 만 바꾸면 된다.
 const PROVIDERS = [
-  // gemini-2.5-flash-lite 는 신규 사용자에게 중단됐다(404). 후속 모델을 쓴다.
-  { name: 'gemini', keyVar: 'GEMINI_API_KEY', model: 'gemini-3.5-flash-lite' },
-  { name: 'openai', keyVar: 'OPENAI_API_KEY', model: 'gpt-5-mini' },
-  { name: 'anthropic', keyVar: 'ANTHROPIC_API_KEY', model: 'claude-haiku-4-5-20251001' },
+  { name: 'gemini', keyVar: 'GEMINI_API_KEY', modelVar: 'GEMINI_MODEL', model: 'gemini-3.5-flash-lite' },
+  { name: 'openai', keyVar: 'OPENAI_API_KEY', modelVar: 'OPENAI_MODEL', model: 'gpt-5-mini' },
+  { name: 'anthropic', keyVar: 'ANTHROPIC_API_KEY', modelVar: 'ANTHROPIC_MODEL', model: 'claude-haiku-4-5-20251001' },
 ];
 
 const TIMEOUT_MS = 25000;
@@ -114,13 +116,14 @@ export async function askAI(env, { system, user }) {
   for (const p of PROVIDERS) {
     const key = env[p.keyVar];
     if (!key) { tried.push({ provider: p.name, skipped: 'no_key' }); continue; }
+    const model = env[p.modelVar] || p.model;
 
     for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
       try {
-        const text = await CALLERS[p.name](key, p.model, system, user);
+        const text = await CALLERS[p.name](key, model, system, user);
         const json = extractJson(text);
         if (!json) throw new ProviderError('client', 200, 'unparseable');
-        return { ok: true, provider: p.name, model: p.model, json };
+        return { ok: true, provider: p.name, model, json };
       } catch (e) {
         const kind = e.kind || 'network';
         // 분당 한도는 같은 단계에서 잠깐 기다렸다 다시 시도한다.
