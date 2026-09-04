@@ -92,7 +92,11 @@ function AiAnswer({ ai }) {
       {a.possible_misinformation && (
         <p className="misinfo">잘못 알고 있을 수 있는 내용: {a.possible_misinformation}</p>
       )}
-      <p className="provenance">분석 모델: {ai.provider} / {ai.model}</p>
+      <p className="provenance">
+        분석 모델: {ai.provider} / {ai.model}
+        {ai.stale && ai.collectedAt &&
+          ` · ${new Date(ai.collectedAt).toLocaleDateString('ko-KR')} 수집분`}
+      </p>
     </section>
   );
 }

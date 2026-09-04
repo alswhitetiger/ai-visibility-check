@@ -53,6 +53,29 @@ async function writeCache(env, result) {
   ).run();
 }
 
+// AI 응답은 진단 캐시와 따로 보관한다.
+// Gemini 무료 티어가 콜로 위치 때문에 간헐적으로 거부당하므로,
+// 한 번 성공한 응답을 남겨 두었다가 실패한 요청에 대신 보여준다.
+async function saveAiAnswer(env, host, ai) {
+  await env.DB.prepare(
+    'INSERT INTO ai_answers (host, answer_json, provider, model, created_at) VALUES (?, ?, ?, ?, ?) ' +
+    'ON CONFLICT(host) DO UPDATE SET answer_json=excluded.answer_json, provider=excluded.provider, ' +
+    'model=excluded.model, created_at=excluded.created_at'
+  ).bind(host, JSON.stringify(ai.answer), ai.provider, ai.model, Date.now()).run();
+}
+
+async function loadAiAnswer(env, host) {
+  const row = await env.DB.prepare('SELECT * FROM ai_answers WHERE host = ?').bind(host).first();
+  if (!row) return null;
+  return {
+    provider: row.provider,
+    model: row.model,
+    answer: JSON.parse(row.answer_json),
+    collectedAt: row.created_at,
+    stale: true,
+  };
+}
+
 function normalize(input) {
   let s = (input || '').trim();
   if (!s) return null;
@@ -111,15 +134,20 @@ async function handleScan(request, env, origin) {
   // AI 실제 질의. 실패해도 규칙 기반 결과는 그대로 돌려준다.
   const brand = params.get('brand') || target.host.replace(/^www\./, '');
   const probe = await askAI(env, brandProbePrompt(brand, target.host));
-  result.ai = probe.ok
-    ? { provider: probe.provider, model: probe.model, answer: probe.json }
-    : {
-        provider: null,
-        model: null,
-        unavailable: true,
-        // 실패 내역은 운영자만 본다. 일반 사용자에게는 프로바이더 이름만 노출한다.
-        tried: isJudge ? probe.tried : probe.tried.map(t => ({ provider: t.provider, kind: t.kind || t.skipped })),
-      };
+  if (probe.ok) {
+    result.ai = { provider: probe.provider, model: probe.model, answer: probe.json };
+    await saveAiAnswer(env, target.host, result.ai);
+  } else {
+    // 이번 호출이 실패해도 예전에 받아 둔 응답이 있으면 그것을 쓴다. 수집 시점을 함께 밝힌다.
+    const previous = await loadAiAnswer(env, target.host);
+    result.ai = previous || {
+      provider: null,
+      model: null,
+      unavailable: true,
+      // 실패 내역은 운영자만 본다. 일반 사용자에게는 프로바이더 이름만 노출한다.
+      tried: isJudge ? probe.tried : probe.tried.map(t => ({ provider: t.provider, kind: t.kind || t.skipped })),
+    };
+  }
 
   await writeCache(env, result);
   return json(result, 200, origin);

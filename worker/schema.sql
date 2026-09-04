@@ -28,3 +28,14 @@ CREATE TABLE IF NOT EXISTS showcase (
   opted_in   INTEGER NOT NULL DEFAULT 0,
   updated_at INTEGER NOT NULL
 );
+
+-- AI 응답 보관소. 진단 캐시(scans)와 분리한다.
+-- Gemini 무료 티어는 Cloudflare 콜로 위치에 따라 간헐적으로 거부당하는데,
+-- 한 번 성공한 응답을 오래 남겨 두면 그 실패를 덮을 수 있다.
+CREATE TABLE IF NOT EXISTS ai_answers (
+  host        TEXT PRIMARY KEY,
+  answer_json TEXT NOT NULL,
+  provider    TEXT NOT NULL,
+  model       TEXT NOT NULL,
+  created_at  INTEGER NOT NULL
+);
