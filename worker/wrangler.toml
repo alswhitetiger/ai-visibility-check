@@ -13,7 +13,7 @@ CACHE_TTL_HOURS = "24"
 [[d1_databases]]
 binding = "DB"
 database_name = "ai-visibility"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "92c0a136-cec9-43f0-98be-a15b79f0cf01"
 
 # 아래 키는 절대 이 파일에 쓰지 않는다. secret으로만 등록한다.
 #   npx wrangler secret put GEMINI_API_KEY
