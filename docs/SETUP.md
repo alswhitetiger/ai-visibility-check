@@ -1,24 +1,14 @@
 # 설정 가이드
 
-## 0단계 — Actions 워크플로 활성화 (한 번만)
+## 0단계 — 배포 방식 (완료됨)
 
-현재 `gh` 토큰에 `workflow` 스코프가 없어 `.github/workflows/` 파일이 푸시되지
-않았다. 워크플로 원본은 [docs/deploy-pages.yml](deploy-pages.yml) 에 들어 있다.
-둘 중 하나로 활성화한다.
+GitHub Actions 워크플로가 활성화되어 있다. `main` 의 `web/**` 이 바뀌면
+자동으로 GitHub Pages에 배포된다. 수동 실행은 `gh workflow run deploy-pages.yml`.
 
-**방법 A — 터미널에서 스코프 추가 (권장)**
+**주소: https://alswhitetiger.github.io/ai-visibility-check/**
 
-```bash
-gh auth refresh -s workflow
-git add .github/workflows/deploy-pages.yml
-git commit -m "ci: GitHub Pages 배포 워크플로 추가"
-git push
-```
-
-**방법 B — GitHub 웹에서 직접 생성**
-
-저장소 → Add file → Create new file → 경로에 `.github/workflows/deploy-pages.yml`
-입력 → `docs/deploy-pages.yml` 내용을 붙여넣고 커밋.
+Actions가 막힐 때를 위한 예비 경로로 `scripts/deploy-pages.sh` 를 남겨 두었다.
+gh-pages 브랜치로 직접 밀어 넣는 방식이며, Pages 소스를 브랜치로 되돌리면 쓸 수 있다.
 
 ## 1단계 — GitHub Pages (실시간 분석 없이 먼저 배포)
 
