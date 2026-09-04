@@ -1,5 +1,25 @@
 # 설정 가이드
 
+## 0단계 — Actions 워크플로 활성화 (한 번만)
+
+현재 `gh` 토큰에 `workflow` 스코프가 없어 `.github/workflows/` 파일이 푸시되지
+않았다. 워크플로 원본은 [docs/deploy-pages.yml](deploy-pages.yml) 에 들어 있다.
+둘 중 하나로 활성화한다.
+
+**방법 A — 터미널에서 스코프 추가 (권장)**
+
+```bash
+gh auth refresh -s workflow
+git add .github/workflows/deploy-pages.yml
+git commit -m "ci: GitHub Pages 배포 워크플로 추가"
+git push
+```
+
+**방법 B — GitHub 웹에서 직접 생성**
+
+저장소 → Add file → Create new file → 경로에 `.github/workflows/deploy-pages.yml`
+입력 → `docs/deploy-pages.yml` 내용을 붙여넣고 커밋.
+
 ## 1단계 — GitHub Pages (실시간 분석 없이 먼저 배포)
 
 프론트만 올린다. 이 단계에서 이미 제출 가능한 링크가 생긴다.
