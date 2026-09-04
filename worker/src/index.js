@@ -48,7 +48,7 @@ async function writeCache(env, result) {
   ).bind(
     // uxScore 는 수집이 차단된 경우 null 이다. 컬럼은 숫자만 받으므로 0 으로 넣는다.
     // 화면이 쓰는 값은 result_json 쪽이라 표시에는 영향이 없다.
-    result.url, result.host, result.aiScore, result.uxScore ?? 0, result.quadrant,
+    result.url, result.host, result.aiScore ?? 0, result.uxScore ?? 0, result.quadrant,
     JSON.stringify(result), result.ai?.provider ?? null, result.ai?.model ?? null, now
   ).run();
 }

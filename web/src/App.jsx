@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
 
 const QUADRANT = {
-  crawl_blocked: {
-    title: '수집 차단',
-    desc: 'robots.txt가 모든 크롤러를 막고 있습니다. AI도 이 사이트를 읽지 못합니다',
-    tone: 'bad',
+  page_skipped: {
+    title: '부분 진단',
+    desc: 'robots.txt 지시에 따라 페이지를 수집하지 않았습니다. AI 크롤러 허용 여부만 확인했습니다',
+    tone: 'warn',
   },
   healthy: { title: '정상', desc: '사람도 AI도 찾을 수 있습니다', tone: 'ok' },
   ai_invisible: { title: 'AI 시대에 사라질 가게', desc: '지금은 팔리지만 AI가 못 찾습니다', tone: 'warn' },
@@ -101,16 +101,109 @@ function AiAnswer({ ai }) {
   );
 }
 
+const CHECK_LABEL = {
+  ai_crawler: 'AI 답변 크롤러 허용',
+  llms_txt: 'llms.txt 제공',
+  jsonld_org: '조직 구조화 데이터',
+  jsonld_product: '상품 구조화 데이터',
+  js_dependency: 'JS 없이도 내용이 보임',
+  sitemap: 'sitemap.xml',
+  canonical: 'canonical 지정',
+  title: '페이지 제목 품질',
+  description: '메타 설명',
+  viewport: '모바일 뷰포트',
+  img_alt: '이미지 대체 텍스트',
+  price: '가격 정보 노출',
+  og: '공유용 OG 태그',
+  business_info: '사업자 정보 표기',
+  ai_training: '학습용 크롤러 (참고)',
+};
+
+// 개별 사이트를 지목하지 않는 익명 집계. 이름을 밝히는 것은 옵트인 목록에서만 한다.
+function Survey({ stats }) {
+  if (!stats || !stats.robotsRead) return null;
+  const ac = stats.answerCrawler;
+  const bars = [
+    { label: '답변 크롤러 전면 허용', n: ac.fullyOpen, tone: 'ok' },
+    { label: '일부 차단', n: ac.partlyBlocked, tone: 'warn' },
+    { label: '전면 차단', n: ac.fullyBlocked, tone: 'bad' },
+  ];
+  const max = Math.max(...bars.map(b => b.n), 1);
+
+  return (
+    <section className="survey">
+      <h3>국내 쇼핑몰 AI 가시성 실태</h3>
+      <p className="hint">
+        국내 쇼핑몰 {stats.scanned + stats.unreachable}곳을 점검했습니다.
+        개별 사이트는 밝히지 않고 집계만 공개합니다.
+      </p>
+
+      <div className="survey-bars">
+        {bars.map(b => (
+          <div key={b.label} className="sbar">
+            <span className="sbar-label">{b.label}</span>
+            <div className="sbar-track">
+              <div className={'sbar-fill ' + b.tone} style={{ width: (b.n / max) * 100 + '%' }} />
+            </div>
+            <strong className="sbar-n">{b.n}</strong>
+          </div>
+        ))}
+      </div>
+      <p className="hint">
+        robots.txt를 읽을 수 있었던 {stats.robotsRead}곳 기준.
+        이 중 <b>{stats.namedAiBots}곳</b>은 AI 봇을 이름으로 지정해 관리하고 있었고,
+        <b> {stats.blocksUnnamedCrawlers}곳</b>은 이름 없는 크롤러를 차단하고 있었습니다.
+      </p>
+
+      {stats.measured > 0 && (
+        <>
+          <div className="survey-avg">
+            <div><span>평균 AI 가시성</span><strong>{stats.avgAiScore}</strong></div>
+            <div><span>평균 구매여정</span><strong>{stats.avgUxScore}</strong></div>
+            <div><span>전체 진단 가능</span><strong>{stats.measured}곳</strong></div>
+          </div>
+
+          <h4>가장 많이 빠져 있는 항목</h4>
+          <ul className="survey-checks">
+            {stats.byCheck
+              .filter(c => c.id !== 'ai_training' && c.passRate !== null)
+              .slice(0, 6)
+              .map(c => (
+                <li key={c.id}>
+                  <span>{CHECK_LABEL[c.id] || c.id}</span>
+                  <div className="sbar-track small">
+                    <div
+                      className={'sbar-fill ' + (c.passRate >= 60 ? 'ok' : c.passRate >= 30 ? 'warn' : 'bad')}
+                      style={{ width: c.passRate + '%' }}
+                    />
+                  </div>
+                  <strong>{c.passRate}%</strong>
+                </li>
+              ))}
+          </ul>
+          <p className="hint">막대는 해당 항목을 통과한 사이트 비율입니다.</p>
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function App() {
   const [url, setUrl] = useState('');
   const [state, setState] = useState({ status: 'idle' });
   const [showcase, setShowcase] = useState([]);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    fetch(import.meta.env.BASE_URL + 'data/showcase.json')
+    const base = import.meta.env.BASE_URL;
+    fetch(base + 'data/showcase.json')
       .then(r => r.json())
       .then(d => setShowcase(d.items || []))
       .catch(() => setShowcase([]));
+    fetch(base + 'data/stats.json')
+      .then(r => r.json())
+      .then(setStats)
+      .catch(() => setStats(null));
   }, []);
 
   async function run(e) {
@@ -175,8 +268,8 @@ export default function App() {
             <span className="host">{d.host}</span>
           </div>
 
-          {/* 수집이 차단된 사이트는 구매여정을 측정하지 못했으므로 사분면을 그리지 않는다. */}
-          {!d.crawlBlocked && (
+          {/* 페이지를 수집하지 못한 경우 점수를 매기지 않는다. 대신 robots.txt 로 알 수 있는 것만 보여준다. */}
+          {!d.pageSkipped && (
             <>
               <Quadrant ai={d.aiScore} ux={d.uxScore} />
               <div className="scores">
@@ -185,11 +278,20 @@ export default function App() {
               </div>
             </>
           )}
-          {d.crawlBlocked && (
-            <p className="notice">
-              robots.txt의 차단 지시를 따라 페이지를 수집하지 않았습니다.
-              그래서 구매여정 점수는 측정하지 못했습니다.
-            </p>
+          {d.pageSkipped && d.robots && (
+            <section className="ai-box">
+              <h3>robots.txt 로 확인한 것</h3>
+              <p className="knows">
+                AI 답변 크롤러 {d.robots.answerTotal}종 중 <b>{d.robots.answerAllowed}종</b>이 접근 가능합니다.
+              </p>
+              <p className="rivals">
+                학습용 크롤러는 {d.robots.trainingTotal}종 중 {d.robots.trainingAllowed}종 허용.
+              </p>
+              <p className="provenance">
+                이 사이트는 robots.txt 에서 이름 없는 크롤러를 차단하고 있습니다.
+                그 지시를 따라 페이지는 수집하지 않았고, 그래서 나머지 항목은 측정하지 못했습니다.
+              </p>
+            </section>
           )}
 
           {d.fixes?.length > 0 && (
@@ -211,6 +313,8 @@ export default function App() {
           {d.cached && <p className="provenance">저장된 결과입니다 (최대 24시간 캐시).</p>}
         </main>
       )}
+
+      <Survey stats={stats} />
 
       {showcase.length > 0 && (
         <section className="showcase">

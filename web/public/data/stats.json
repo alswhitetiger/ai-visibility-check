@@ -1,0 +1,142 @@
+{
+  "generatedAt": "2026-09-04T07:30:15.260Z",
+  "robotsRead": 21,
+  "answerCrawler": {
+    "fullyOpen": 12,
+    "partlyBlocked": 7,
+    "fullyBlocked": 2
+  },
+  "namedAiBots": 13,
+  "blocksUnnamedCrawlers": 12,
+  "scanned": 22,
+  "measured": 10,
+  "pageSkipped": 12,
+  "unreachable": 7,
+  "avgAiScore": 54,
+  "avgUxScore": 55,
+  "quadrants": [
+    {
+      "quadrant": "healthy",
+      "count": 2
+    },
+    {
+      "quadrant": "ai_invisible",
+      "count": 2
+    },
+    {
+      "quadrant": "leaking",
+      "count": 1
+    },
+    {
+      "quadrant": "critical",
+      "count": 5
+    }
+  ],
+  "byCheck": [
+    {
+      "id": "jsonld_product",
+      "axis": "ai",
+      "passed": 0,
+      "total": 10,
+      "passRate": 0
+    },
+    {
+      "id": "price",
+      "axis": "ux",
+      "passed": 2,
+      "total": 10,
+      "passRate": 20
+    },
+    {
+      "id": "jsonld_org",
+      "axis": "ai",
+      "passed": 3,
+      "total": 10,
+      "passRate": 30
+    },
+    {
+      "id": "llms_txt",
+      "axis": "ai",
+      "passed": 4,
+      "total": 10,
+      "passRate": 40
+    },
+    {
+      "id": "canonical",
+      "axis": "ai",
+      "passed": 5,
+      "total": 10,
+      "passRate": 50
+    },
+    {
+      "id": "description",
+      "axis": "ux",
+      "passed": 5,
+      "total": 10,
+      "passRate": 50
+    },
+    {
+      "id": "img_alt",
+      "axis": "ux",
+      "passed": 5,
+      "total": 10,
+      "passRate": 50
+    },
+    {
+      "id": "business_info",
+      "axis": "ux",
+      "passed": 5,
+      "total": 10,
+      "passRate": 50
+    },
+    {
+      "id": "js_dependency",
+      "axis": "ai",
+      "passed": 6,
+      "total": 10,
+      "passRate": 60
+    },
+    {
+      "id": "sitemap",
+      "axis": "ai",
+      "passed": 6,
+      "total": 10,
+      "passRate": 60
+    },
+    {
+      "id": "title",
+      "axis": "ux",
+      "passed": 7,
+      "total": 10,
+      "passRate": 70
+    },
+    {
+      "id": "viewport",
+      "axis": "ux",
+      "passed": 7,
+      "total": 10,
+      "passRate": 70
+    },
+    {
+      "id": "og",
+      "axis": "ux",
+      "passed": 8,
+      "total": 10,
+      "passRate": 80
+    },
+    {
+      "id": "ai_crawler",
+      "axis": "ai",
+      "passed": 10,
+      "total": 10,
+      "passRate": 100
+    },
+    {
+      "id": "ai_training",
+      "axis": "ai",
+      "passed": 10,
+      "total": 10,
+      "passRate": 100
+    }
+  ]
+}

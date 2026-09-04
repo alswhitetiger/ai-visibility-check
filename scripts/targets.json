@@ -1,3 +1,32 @@
 [
-  { "host": "example.com", "label": "예시", "optedIn": false }
+  { "host": "frokyvape.com", "label": "FROKY VAPE", "optedIn": true },
+  { "host": "dearbody.cafe24.com", "label": "DEAR BODY", "optedIn": true },
+
+  { "host": "www.oliveyoung.co.kr", "optedIn": false },
+  { "host": "www.kurly.com", "optedIn": false },
+  { "host": "www.ssg.com", "optedIn": false },
+  { "host": "www.gmarket.co.kr", "optedIn": false },
+  { "host": "www.11st.co.kr", "optedIn": false },
+  { "host": "www.wconcept.co.kr", "optedIn": false },
+  { "host": "www.29cm.co.kr", "optedIn": false },
+  { "host": "www.musinsa.com", "optedIn": false },
+  { "host": "zigzag.kr", "optedIn": false },
+  { "host": "www.brandi.co.kr", "optedIn": false },
+  { "host": "www.sivillage.com", "optedIn": false },
+  { "host": "www.lotteon.com", "optedIn": false },
+  { "host": "www.aland.co.kr", "optedIn": false },
+  { "host": "www.coupang.com", "optedIn": false },
+  { "host": "www.auction.co.kr", "optedIn": false },
+  { "host": "www.tmon.co.kr", "optedIn": false },
+  { "host": "www.interpark.com", "optedIn": false },
+  { "host": "www.hmall.com", "optedIn": false },
+  { "host": "www.cjonstyle.com", "optedIn": false },
+  { "host": "www.gsshop.com", "optedIn": false },
+  { "host": "www.lotteimall.com", "optedIn": false },
+  { "host": "www.thehandsome.com", "optedIn": false },
+  { "host": "www.eqlstore.com", "optedIn": false },
+  { "host": "www.ohou.se", "optedIn": false },
+  { "host": "www.idus.com", "optedIn": false },
+  { "host": "www.wemakeprice.com", "optedIn": false },
+  { "host": "www.hyundaihmall.com", "optedIn": false }
 ]

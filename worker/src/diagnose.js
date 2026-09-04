@@ -2,7 +2,23 @@
 // 전체 진단 항목의 약 70%가 여기서 판정된다.
 
 const UA = 'AIVisibilityCheck/0.1 (+https://github.com/alswhitetiger/ai-visibility-check)';
-const AI_CRAWLERS = ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended', 'CCBot', 'anthropic-ai'];
+
+// AI 크롤러는 목적이 둘로 나뉜다. 섞어서 세면 진단이 틀린다.
+//
+// 답변용: 사용자가 질문했을 때 사이트를 찾아가 인용하는 크롤러.
+//         이게 막히면 AI 답변에 우리 가게가 등장하지 못한다. 점수에 반영한다.
+// 학습용: 모델 학습 데이터를 모으는 크롤러.
+//         막는 것은 정당한 사업 판단이라 점수화하지 않고 현황만 알린다.
+const ANSWER_CRAWLERS = [
+  'OAI-SearchBot', 'ChatGPT-User',
+  'Claude-User', 'Claude-SearchBot',
+  'PerplexityBot', 'Perplexity-User',
+  'Gemini-Deep-Research',
+];
+const TRAINING_CRAWLERS = [
+  'GPTBot', 'ClaudeBot', 'anthropic-ai',
+  'Google-Extended', 'CCBot', 'Applebot-Extended', 'meta-externalagent',
+];
 
 async function get(url, timeoutMs = 10000) {
   const ctl = new AbortController();
@@ -17,7 +33,9 @@ async function get(url, timeoutMs = 10000) {
   }
 }
 
-// robots.txt를 파싱해 각 AI 크롤러가 차단됐는지 본다.
+// robots.txt 를 그룹 단위로 파싱한다.
+// 연속된 User-agent 줄은 하나의 그룹을 공유한다(표준). 규칙이 한 번 나온 뒤
+// 다시 User-agent 가 나오면 새 그룹이다.
 function parseRobots(txt) {
   const groups = [];
   let cur = null;
@@ -35,14 +53,56 @@ function parseRobots(txt) {
       cur.rules.push({ type: key, path: val });
     }
   }
-  const blocked = [];
-  for (const bot of AI_CRAWLERS) {
-    const g = groups.find(x => x.agents.some(a => a.toLowerCase() === bot.toLowerCase()));
-    if (g && g.rules.some(r => r.type === 'disallow' && r.path === '/')) blocked.push(bot);
-  }
-  const star = groups.find(x => x.agents.includes('*'));
-  const blockedAll = !!star && star.rules.some(r => r.type === 'disallow' && r.path === '/');
-  return { blocked, blockedAll };
+  return groups;
+}
+
+// 특정 UA 에 적용되는 그룹을 찾는다. 정확히 일치하는 그룹이 우선이고,
+// 없으면 `*` 그룹이 적용된다. 둘 다 없으면 제한이 없다는 뜻이다.
+function groupFor(groups, ua) {
+  const exact = groups.find(g => g.agents.some(a => a.toLowerCase() === ua.toLowerCase()));
+  if (exact) return { group: exact, matchedBy: 'exact' };
+  const star = groups.find(g => g.agents.includes('*'));
+  if (star) return { group: star, matchedBy: 'wildcard' };
+  return { group: null, matchedBy: 'none' };
+}
+
+// 루트 접근 기준 판정.
+//   allowed : 전면 차단이 없다
+//   partial : 전면 차단이지만 일부 경로를 Allow 로 열어 두었다
+//   blocked : 전면 차단이고 열어 준 경로가 없다
+function accessOf(group) {
+  if (!group) return 'allowed';
+  const denyAll = group.rules.some(r => r.type === 'disallow' && r.path === '/');
+  if (!denyAll) return 'allowed';
+  return group.rules.some(r => r.type === 'allow' && r.path) ? 'partial' : 'blocked';
+}
+
+// 이 사이트가 AI 크롤러에게 열려 있는지, 그리고 우리 진단 크롤러가 접근해도 되는지를
+// 나눠서 판단한다. 국내 대형몰은 필요한 봇만 허용하고 `*` 를 막는 경우가 많은데,
+// 이 둘을 뭉뚱그리면 "AI 크롤러 차단"으로 잘못 읽게 된다.
+function analyzeRobots(txt) {
+  const groups = parseRobots(txt);
+  const scan = list => list.map(ua => {
+    const { group, matchedBy } = groupFor(groups, ua);
+    return { ua, access: accessOf(group), matchedBy };
+  });
+
+  const answer = scan(ANSWER_CRAWLERS);
+  const training = scan(TRAINING_CRAWLERS);
+  const openAnswer = answer.filter(c => c.access !== 'blocked');
+
+  return {
+    answer,
+    training,
+    answerAllowed: openAnswer.length,
+    answerTotal: answer.length,
+    trainingAllowed: training.filter(c => c.access !== 'blocked').length,
+    trainingTotal: training.length,
+    // 이름으로 따로 허용해 준 봇이 있으면, 사이트가 AI 접근을 의식하고 있다는 신호다.
+    namedCount: [...answer, ...training].filter(c => c.matchedBy === 'exact').length,
+    // 우리 크롤러는 이름이 없으므로 `*` 그룹을 따른다.
+    selfAccess: accessOf(groupFor(groups, UA).group),
+  };
 }
 
 function textOf(html) {
@@ -99,23 +159,22 @@ export async function diagnose(targetUrl) {
   // robots.txt 를 먼저 본다. 우리를 막고 있으면 페이지를 아예 가져오지 않는다.
   // 화면에 "robots.txt 를 따릅니다"라고 밝힌 이상 실제로 따라야 한다.
   const robots = await get(origin + '/robots.txt');
-  const robotsInfo = robots.ok ? parseRobots(robots.text) : { blocked: [], blockedAll: false };
+  const rb = robots.ok ? analyzeRobots(robots.text) : null;
 
-  if (robotsInfo.blockedAll) {
+  // 우리는 이름 없는 크롤러라 `*` 규칙을 따른다. 여기서 막히면 페이지를 수집하지 않는다.
+  // 다만 robots.txt 만으로도 가장 중요한 질문 — AI 답변 크롤러가 들어올 수 있는가 — 에는
+  // 답할 수 있으므로, 그 부분은 그대로 돌려준다.
+  if (rb && rb.selfAccess === 'blocked') {
     return {
       url: u.href,
       host: u.host,
-      crawlBlocked: true,
-      quadrant: 'crawl_blocked',
-      aiScore: 0,
+      pageSkipped: true,
+      quadrant: 'page_skipped',
+      aiScore: null,
       uxScore: null,
+      robots: rb,
       checks: [],
-      fixes: [{
-        id: 'ai_crawler',
-        label: 'robots.txt 가 모든 크롤러를 차단하고 있습니다',
-        why: 'AI 크롤러도 여기서 막힙니다. 검색과 AI 답변 양쪽에서 사이트가 보이지 않게 되므로, '
-           + '차단이 의도한 것인지 먼저 확인해야 합니다. 우리도 이 지시를 따라 페이지를 수집하지 않았습니다.',
-      }],
+      fixes: [],
       scannedAt: Date.now(),
     };
   }
@@ -155,14 +214,26 @@ export async function diagnose(targetUrl) {
   const checks = [
     {
       id: 'ai_crawler', axis: 'ai', weight: 25,
-      pass: !robotsInfo.blockedAll && robotsInfo.blocked.length === 0,
-      label: 'AI 크롤러 접근 허용',
-      detail: robotsInfo.blockedAll
-        ? 'robots.txt가 모든 크롤러를 차단하고 있습니다'
-        : robotsInfo.blocked.length
-          ? '차단 중: ' + robotsInfo.blocked.join(', ')
-          : 'AI 크롤러를 막고 있지 않습니다',
-      why: 'AI가 페이지를 읽지 못하면 어떤 최적화도 소용이 없습니다. 가장 먼저 확인할 항목입니다.',
+      // 답변용 크롤러 기준으로만 판정한다. 학습용 차단은 정당한 선택이라 감점하지 않는다.
+      pass: !rb || rb.answerAllowed === rb.answerTotal,
+      label: 'AI 답변 크롤러 접근 허용',
+      detail: !rb
+        ? 'robots.txt 없음 (제한 없음)'
+        : `답변용 ${rb.answerTotal}종 중 ${rb.answerAllowed}종 허용` +
+          (rb.answerAllowed < rb.answerTotal
+            ? ' · 차단: ' + rb.answer.filter(c => c.access === 'blocked').map(c => c.ua).join(', ')
+            : ''),
+      why: '사용자가 AI에게 물었을 때 사이트를 찾아가 인용하는 크롤러입니다. '
+         + '여기가 막히면 AI 답변에 우리 가게가 등장할 수 없습니다.',
+    },
+    {
+      id: 'ai_training', axis: 'ai', weight: 0,
+      pass: true, // 정보성 항목. 점수에 넣지 않는다.
+      label: '학습용 크롤러 (참고)',
+      detail: !rb
+        ? '제한 없음'
+        : `학습용 ${rb.trainingTotal}종 중 ${rb.trainingAllowed}종 허용`,
+      why: '모델 학습 데이터 수집용입니다. 막는 것도 정당한 선택이라 점수에 반영하지 않습니다.',
     },
     {
       id: 'llms_txt', axis: 'ai', weight: 10, pass: llms.ok,
@@ -267,6 +338,7 @@ export async function diagnose(targetUrl) {
     aiScore,
     uxScore,
     quadrant,
+    robots: rb,
     checks: checks.map(({ weight, ...rest }) => rest),
     fixes: checks
       .filter(c => !c.pass)
@@ -278,7 +350,7 @@ export async function diagnose(targetUrl) {
 }
 
 export const QUADRANT_LABEL = {
-  crawl_blocked: '수집 차단 — robots.txt 가 모든 크롤러를 막고 있어 AI도 읽지 못합니다',
+  page_skipped: '부분 진단 — robots.txt 지시에 따라 페이지를 수집하지 않았습니다',
   healthy: '정상 — 사람도 AI도 찾을 수 있습니다',
   ai_invisible: 'AI 시대에 사라질 가게 — 지금은 팔리지만 AI가 못 찾습니다',
   leaking: '유입은 되는데 새는 중 — AI는 찾지만 사람이 못 삽니다',

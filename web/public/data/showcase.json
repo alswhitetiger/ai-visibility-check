@@ -1,5 +1,20 @@
 {
-  "generatedAt": null,
-  "note": "scripts/precompute.mjs 로 채운다. 공개 동의(opt-in)한 항목만 넣는다.",
-  "items": []
+  "generatedAt": "2026-09-04T07:30:15.260Z",
+  "note": "공개에 동의한 사이트만 표시합니다. 순위가 아니라 점검 항목의 통과 여부입니다.",
+  "items": [
+    {
+      "host": "dearbody.cafe24.com",
+      "label": "DEAR BODY",
+      "ai_score": 70,
+      "ux_score": 59,
+      "quadrant": "leaking"
+    },
+    {
+      "host": "frokyvape.com",
+      "label": "FROKY VAPE",
+      "ai_score": 60,
+      "ux_score": 67,
+      "quadrant": "healthy"
+    }
+  ]
 }
