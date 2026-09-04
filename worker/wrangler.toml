@@ -1,0 +1,22 @@
+name = "ai-visibility"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# 프론트(GitHub Pages) 주소. CORS 허용 대상.
+[vars]
+ALLOWED_ORIGINS = "http://localhost:5173,https://alswhitetiger.github.io"
+DAILY_SCAN_LIMIT = "400"
+IP_DAILY_LIMIT = "5"
+CACHE_TTL_HOURS = "24"
+JUDGE_CODE = ""   # 심사위원 우회 코드. 배포 전 값을 채운다.
+
+# D1 바인딩. `wrangler d1 create ai-visibility` 실행 후 id를 채운다.
+[[d1_databases]]
+binding = "DB"
+database_name = "ai-visibility"
+database_id = "REPLACE_WITH_D1_ID"
+
+# 아래 키는 절대 이 파일에 쓰지 않는다. secret으로만 등록한다.
+#   npx wrangler secret put GEMINI_API_KEY
+#   npx wrangler secret put OPENAI_API_KEY
+#   npx wrangler secret put ANTHROPIC_API_KEY
