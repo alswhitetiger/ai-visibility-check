@@ -37,6 +37,7 @@ npm run db:remote
 npx wrangler secret put GEMINI_API_KEY
 npx wrangler secret put OPENAI_API_KEY
 npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put JUDGE_CODE      # 심사위원 우회 코드
 
 npm run deploy
 ```
@@ -60,7 +61,7 @@ npm run deploy
 | `DAILY_SCAN_LIMIT` | 400 | 하루 전체 분석 상한 |
 | `IP_DAILY_LIMIT` | 5 | IP 하나당 하루 상한 |
 | `CACHE_TTL_HOURS` | 24 | 같은 URL 재사용 기간 |
-| `JUDGE_CODE` | (비어 있음) | 심사위원용 우회 코드 |
+| `JUDGE_CODE` | (secret) | 심사위원용 우회 코드. 공개 저장소에 값을 남기지 않으려고 secret 으로 둔다 |
 
 한도를 넘으면 서비스가 죽는 대신 안내 문구와 함께 저장된 결과를 보여준다.
 제출 설명란에 심사용 코드를 함께 적으면 심사위원은 한도 없이 실행할 수 있다.

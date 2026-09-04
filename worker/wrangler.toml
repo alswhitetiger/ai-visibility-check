@@ -8,7 +8,6 @@ ALLOWED_ORIGINS = "http://localhost:5173,https://alswhitetiger.github.io"
 DAILY_SCAN_LIMIT = "400"
 IP_DAILY_LIMIT = "5"
 CACHE_TTL_HOURS = "24"
-JUDGE_CODE = ""   # 심사위원 우회 코드. 배포 전 값을 채운다.
 
 # D1 바인딩. `wrangler d1 create ai-visibility` 실행 후 id를 채운다.
 [[d1_databases]]
@@ -20,3 +19,6 @@ database_id = "REPLACE_WITH_D1_ID"
 #   npx wrangler secret put GEMINI_API_KEY
 #   npx wrangler secret put OPENAI_API_KEY
 #   npx wrangler secret put ANTHROPIC_API_KEY
+#
+# 심사위원 우회 코드도 secret 으로 둔다. 공개 저장소에 값을 남기지 않기 위해서다.
+#   npx wrangler secret put JUDGE_CODE
