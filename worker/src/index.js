@@ -104,7 +104,13 @@ async function handleScan(request, env, origin) {
   const probe = await askAI(env, brandProbePrompt(brand, target.host));
   result.ai = probe.ok
     ? { provider: probe.provider, model: probe.model, answer: probe.json }
-    : { provider: null, model: null, unavailable: true, tried: probe.tried };
+    : {
+        provider: null,
+        model: null,
+        unavailable: true,
+        // 실패 내역은 운영자만 본다. 일반 사용자에게는 프로바이더 이름만 노출한다.
+        tried: isJudge ? probe.tried : probe.tried.map(t => ({ provider: t.provider, kind: t.kind || t.skipped })),
+      };
 
   await writeCache(env, result);
   return json(result, 200, origin);

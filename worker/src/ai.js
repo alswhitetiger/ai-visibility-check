@@ -4,7 +4,8 @@
 // 키 오류(4xx)는 폴백하지 않는다. 키 하나가 잘못됐을 때 셋을 다 태우지 않기 위해서다.
 
 const PROVIDERS = [
-  { name: 'gemini', keyVar: 'GEMINI_API_KEY', model: 'gemini-2.5-flash-lite' },
+  // gemini-2.5-flash-lite 는 신규 사용자에게 중단됐다(404). 후속 모델을 쓴다.
+  { name: 'gemini', keyVar: 'GEMINI_API_KEY', model: 'gemini-3.5-flash-lite' },
   { name: 'openai', keyVar: 'OPENAI_API_KEY', model: 'gpt-5-mini' },
   { name: 'anthropic', keyVar: 'ANTHROPIC_API_KEY', model: 'claude-haiku-4-5-20251001' },
 ];
@@ -127,7 +128,14 @@ export async function askAI(env, { system, user }) {
           await sleep(RETRY_DELAYS[attempt]);
           continue;
         }
-        tried.push({ provider: p.name, kind, status: e.status });
+        // detail 은 프로바이더가 돌려준 오류 메시지다. 키는 포함되지 않는다.
+        // 공개 응답에는 넣지 않고, 심사/디버깅 경로에서만 노출한다(index.js).
+        tried.push({
+          provider: p.name,
+          kind,
+          status: e.status,
+          detail: String(e.body || '').slice(0, 300),
+        });
         break; // 다음 프로바이더로
       }
     }

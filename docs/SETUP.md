@@ -98,3 +98,30 @@ AI 호출 없이 규칙 기반 엔진만 쓰므로 비용이 들지 않는다.
 | Cloudflare Workers + D1 | 0원 (무료 한도 내) |
 | Gemini API | 0원 (무료 티어) |
 | OpenAI / Anthropic | 폴백 시에만. 콘솔에서 상한을 걸어 둘 것 |
+
+## 알려진 이슈 — Gemini 지역 제한
+
+Cloudflare Worker에서 Gemini 무료 티어를 호출하면 간헐적으로 아래 오류가 난다.
+
+```
+400 FAILED_PRECONDITION
+User location is not supported for the API use.
+```
+
+요청을 처리한 Cloudflare 콜로(데이터센터)의 위치를 Google이 무료 티어 지원 지역으로
+인정하지 않을 때 발생한다. 같은 요청도 콜로에 따라 성공한다. 로컬(한국)에서는 항상 성공한다.
+
+대응은 이미 되어 있다. 폴백 체인이 다음 프로바이더로 넘어가고, 그마저 없으면
+규칙 기반 진단 결과만 정상 반환한다. 서비스가 멈추지 않는다.
+
+**안정성을 높이려면 2단(OpenAI) 키를 등록해 두는 것이 좋다.** 이 지역 오류를
+그대로 받아내는 자리다.
+
+```bash
+npx wrangler secret put OPENAI_API_KEY
+```
+
+## 모델
+
+`gemini-2.5-flash-lite` 는 신규 사용자에게 중단됐다(404). Google 안내에 따라
+`gemini-3.5-flash-lite` 를 쓴다.
