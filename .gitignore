@@ -9,3 +9,4 @@ dist/
 .deploy/
 worker/secrets.json
 secrets.json
+scripts/out/
