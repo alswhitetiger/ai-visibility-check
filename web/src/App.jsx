@@ -188,11 +188,62 @@ function Survey({ stats }) {
   );
 }
 
+// 이름을 밝히되 점수는 매기지 않는 사실 점검표.
+// 여기 값은 전부 해당 사이트의 robots.txt 와 HTML 을 열면 확인되는 관측값이다.
+function Facts({ facts }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!facts || !facts.items || facts.items.length === 0) return null;
+
+  const mark = v => (v === null || v === undefined ? '—' : v ? '있음' : '없음');
+  const rows = expanded ? facts.items : facts.items.slice(0, 12);
+
+  return (
+    <section className="facts">
+      <h3>점검한 사이트별 확인 결과</h3>
+      <p className="hint">{facts.method}</p>
+      <div className="facts-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>사이트</th>
+              <th>AI 답변 크롤러</th>
+              <th>llms.txt</th>
+              <th>상품 데이터</th>
+              <th>가격 노출</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(f => (
+              <tr key={f.host}>
+                <td className="host-cell">{f.host}</td>
+                <td>{f.answerCrawler || '—'}</td>
+                <td className={f.llmsTxt === false ? 'no' : ''}>{mark(f.llmsTxt)}</td>
+                <td className={f.productLd === false ? 'no' : ''}>{mark(f.productLd)}</td>
+                <td className={f.priceVisible === false ? 'no' : ''}>{mark(f.priceVisible)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {facts.items.length > 12 && (
+        <button className="more" onClick={() => setExpanded(v => !v)}>
+          {expanded ? '접기' : `전체 ${facts.items.length}곳 보기`}
+        </button>
+      )}
+      <p className="hint">
+        &lsquo;—&rsquo; 는 해당 사이트가 robots.txt 에서 이름 없는 크롤러를 막고 있어
+        페이지를 수집하지 않은 항목입니다. 그 지시를 그대로 따랐습니다.
+      </p>
+    </section>
+  );
+}
+
 export default function App() {
   const [url, setUrl] = useState('');
   const [state, setState] = useState({ status: 'idle' });
   const [showcase, setShowcase] = useState([]);
   const [stats, setStats] = useState(null);
+  const [facts, setFacts] = useState(null);
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL;
@@ -204,6 +255,10 @@ export default function App() {
       .then(r => r.json())
       .then(setStats)
       .catch(() => setStats(null));
+    fetch(base + 'data/facts.json')
+      .then(r => r.json())
+      .then(setFacts)
+      .catch(() => setFacts(null));
   }, []);
 
   async function run(e) {
@@ -315,6 +370,8 @@ export default function App() {
       )}
 
       <Survey stats={stats} />
+
+      <Facts facts={facts} />
 
       {showcase.length > 0 && (
         <section className="showcase">

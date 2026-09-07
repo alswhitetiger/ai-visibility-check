@@ -102,13 +102,13 @@ for (const t of targets) {
     robots: r.robots || null,
   };
 
-  // AI 응답은 옵트인한 사이트에 대해서만 수집·보관한다.
-  if (t.optedIn) {
-    const ans = await probe(t.label || r.host, r.host);
-    if (ans) {
-      row.ai = { provider: 'gemini', model: MODEL, answer: ans };
-      console.log('    AI 응답 수집 완료');
-    }
+  // AI 응답은 모든 사이트에 대해 수집한다.
+  // 이것은 공개 게시물이 아니라 D1 캐시 시드다. 사용자가 그 사이트를 조회했을 때
+  // 실시간 호출이 지역 제한으로 실패해도 답을 보여주기 위한 것이라 게재 동의와 무관하다.
+  const ans = await probe(t.label || r.host, r.host);
+  if (ans) {
+    row.ai = { provider: 'gemini', model: MODEL, answer: ans };
+    console.log('    AI 응답 수집 완료');
   }
 
   rows.push(row);
@@ -184,7 +184,35 @@ const showcase = {
     .sort((a, b) => b.ai_score - a.ai_score),
 };
 
+// ---- 사실 점검표 -----------------------------------------------------------
+// 이름을 밝히되 점수·등급·순위는 넣지 않는다.
+// 여기 담기는 값은 누구나 해당 사이트의 robots.txt 와 HTML 을 열면 확인되는 사실뿐이다.
+// 평가가 아니라 관측이므로 게재 동의 없이도 공개할 수 있다.
+const has = (row, id) => {
+  const c = (row.checks || []).find(x => x.id === id);
+  return c ? c.pass : null;
+};
+
+const facts = {
+  generatedAt: stats.generatedAt,
+  method: '공개된 robots.txt 와 HTML 을 그대로 읽어 확인한 사실입니다. '
+        + '점수나 등급이 아니며, 누구나 같은 방법으로 재확인할 수 있습니다.',
+  items: rows
+    .filter(r => r.state === 'ok' || r.state === 'page_skipped')
+    .map(r => ({
+      host: r.host,
+      collected: r.state === 'ok',
+      answerCrawler: r.robots ? `${r.robots.answerAllowed}/${r.robots.answerTotal}` : null,
+      llmsTxt: has(r, 'llms_txt'),
+      productLd: has(r, 'jsonld_product'),
+      orgLd: has(r, 'jsonld_org'),
+      priceVisible: has(r, 'price'),
+    }))
+    .sort((a, b) => a.host.localeCompare(b.host)),
+};
+
 await mkdir(DATA, { recursive: true });
+await writeFile(resolve(DATA, 'facts.json'), JSON.stringify(facts, null, 2) + '\n');
 await writeFile(resolve(DATA, 'stats.json'), JSON.stringify(stats, null, 2) + '\n');
 await writeFile(resolve(DATA, 'showcase.json'), JSON.stringify(showcase, null, 2) + '\n');
 
@@ -208,5 +236,5 @@ console.log(`측정 ${stats.measured}곳 / 수집 생략 ${stats.pageSkipped}곳
 console.log(`robots 확인 ${stats.robotsRead}곳 — 답변 크롤러 전면허용 ${stats.answerCrawler.fullyOpen} / 일부차단 ${stats.answerCrawler.partlyBlocked} / 전면차단 ${stats.answerCrawler.fullyBlocked}`);
 console.log(`AI 봇을 이름으로 명시한 곳 ${stats.namedAiBots} · 무명 크롤러를 막는 곳 ${stats.blocksUnnamedCrawlers}`);
 console.log(`평균 AI 가시성 ${stats.avgAiScore} · 평균 구매여정 ${stats.avgUxScore}`);
-console.log(`공개 목록 ${showcase.items.length}건 · AI 응답 수집 ${withAi.length}건`);
+console.log(`공개 목록 ${showcase.items.length}건 · 사실 점검표 ${facts.items.length}건 · AI 응답 수집 ${withAi.length}건`);
 if (withAi.length) console.log('D1 시드: scripts/out/seed-ai.sql');
