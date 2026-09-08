@@ -384,16 +384,18 @@ export default function App() {
   const [facts, setFacts] = useState(null);
 
   useEffect(() => {
-    const base = import.meta.env.BASE_URL;
-    fetch(base + 'data/showcase.json')
+    // 빌드마다 바뀌는 값을 붙여 캐시된 옛 수치가 남지 않게 한다.
+    const data = name => `${import.meta.env.BASE_URL}data/${name}.json?v=${__BUILD_ID__}`;
+
+    fetch(data('showcase'))
       .then(r => r.json())
       .then(d => setShowcase(d.items || []))
       .catch(() => setShowcase([]));
-    fetch(base + 'data/stats.json')
+    fetch(data('stats'))
       .then(r => r.json())
       .then(setStats)
       .catch(() => setStats(null));
-    fetch(base + 'data/facts.json')
+    fetch(data('facts'))
       .then(r => r.json())
       .then(setFacts)
       .catch(() => setFacts(null));

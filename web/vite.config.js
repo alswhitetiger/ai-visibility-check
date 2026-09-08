@@ -6,4 +6,9 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: process.env.VITE_BASE || '/ai-visibility-check/',
+  // JS/CSS 는 파일명에 해시가 붙어 갱신되지만 public/data/*.json 은 주소가 그대로라
+  // 재방문자에게 낡은 수치가 남는다. 빌드마다 바뀌는 값을 쿼리로 붙여 무효화한다.
+  define: {
+    __BUILD_ID__: JSON.stringify(Date.now().toString(36)),
+  },
 });
