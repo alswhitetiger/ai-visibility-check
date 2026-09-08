@@ -153,6 +153,82 @@ async function handleScan(request, env, origin) {
   return json(result, 200, origin);
 }
 
+// 공개 목록 등록은 "그 사이트를 실제로 제어하는 사람"만 할 수 있어야 한다.
+// 버튼 한 번으로 남의 가게를 점수와 함께 게시하면, 우리가 피하려던 문제가 그대로 돌아온다.
+//
+// 토큰은 호스트에서 결정론적으로 만든다. 값 자체는 비밀이 아니어도 된다.
+// 아무나 남의 호스트 토큰을 계산할 수는 있지만, 그 호스트에 파일이나 메타태그를
+// 올릴 수는 없기 때문이다. 확인 근거는 토큰의 비밀성이 아니라 사이트 제어권이다.
+async function optinToken(host) {
+  const data = new TextEncoder().encode('ai-visibility-check:v1:' + host.toLowerCase());
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(digest)].slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// 메타태그 또는 well-known 파일 중 하나에 토큰이 있으면 소유를 인정한다.
+async function verifyOwnership(origin, host) {
+  const token = await optinToken(host);
+  const ua = { 'User-Agent': 'AIVisibilityCheck/0.1 (+optin-verify)' };
+
+  const wellKnown = await fetch(origin + '/.well-known/ai-visibility-check.txt', { headers: ua })
+    .then(r => (r.ok ? r.text() : ''))
+    .catch(() => '');
+  if (wellKnown.includes(token)) return { ok: true, via: 'well-known', token };
+
+  const html = await fetch(origin + '/', { headers: ua })
+    .then(r => (r.ok ? r.text() : ''))
+    .catch(() => '');
+  const re = /<meta[^>]+name=["']ai-visibility-check["'][^>]+content=["']([^"']+)["']/i;
+  const m = html.match(re);
+  if (m && m[1].trim() === token) return { ok: true, via: 'meta', token };
+
+  return { ok: false, token };
+}
+
+async function handleOptin(request, env, origin) {
+  const params = new URL(request.url).searchParams;
+  const target = normalize(params.get('url'));
+  if (!target) return json({ error: 'INVALID_URL' }, 400, origin);
+
+  const host = target.host;
+
+  // 확인 방법만 알려주는 조회. 등록하지 않는다.
+  if (request.method === 'GET') {
+    const token = await optinToken(host);
+    return json({
+      host,
+      token,
+      howto: {
+        meta: `<meta name="ai-visibility-check" content="${token}">`,
+        file: `/.well-known/ai-visibility-check.txt 에 ${token} 을 넣어 주세요.`,
+      },
+    }, 200, origin);
+  }
+
+  const scan = await env.DB.prepare(
+    'SELECT host, ai_score, ux_score FROM scans WHERE host = ? ORDER BY created_at DESC LIMIT 1'
+  ).bind(host).first();
+  if (!scan) return json({ error: 'SCAN_FIRST', message: '먼저 진단을 실행해 주세요.' }, 400, origin);
+
+  const check = await verifyOwnership(target.origin, host);
+  if (!check.ok) {
+    return json({
+      error: 'NOT_VERIFIED',
+      message: '사이트에서 확인 값을 찾지 못했습니다. 반영에 시간이 걸릴 수 있으니 잠시 후 다시 시도해 주세요.',
+      token: check.token,
+    }, 200, origin);
+  }
+
+  const label = (params.get('label') || host).slice(0, 60);
+  await env.DB.prepare(
+    'INSERT INTO showcase (host, label, ai_score, ux_score, opted_in, updated_at) VALUES (?, ?, ?, ?, 1, ?) ' +
+    'ON CONFLICT(host) DO UPDATE SET label=excluded.label, ai_score=excluded.ai_score, ' +
+    'ux_score=excluded.ux_score, opted_in=1, updated_at=excluded.updated_at'
+  ).bind(host, label, scan.ai_score, scan.ux_score, Date.now()).run();
+
+  return json({ ok: true, host, via: check.via }, 200, origin);
+}
+
 async function handleShowcase(env, origin) {
   const { results } = await env.DB.prepare(
     'SELECT host, label, ai_score, ux_score FROM showcase WHERE opted_in = 1 ORDER BY ai_score DESC LIMIT 200'
@@ -170,7 +246,7 @@ export default {
         status: 204,
         headers: {
           'access-control-allow-origin': origin,
-          'access-control-allow-methods': 'GET,OPTIONS',
+          'access-control-allow-methods': 'GET,POST,OPTIONS',
           'access-control-allow-headers': 'content-type',
           'access-control-max-age': '86400',
         },
@@ -186,6 +262,9 @@ export default {
       }
       if (pathname === '/api/showcase') {
         return await handleShowcase(env, origin);
+      }
+      if (pathname === '/api/optin') {
+        return await handleOptin(request, env, origin);
       }
       return json({ error: 'NOT_FOUND' }, 404, origin);
     } catch (e) {

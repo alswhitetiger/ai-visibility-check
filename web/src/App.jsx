@@ -238,6 +238,101 @@ function Facts({ facts }) {
   );
 }
 
+// 진단 결과 아래에 붙는 두 가지 행동.
+//
+// 공유는 누구나 할 수 있다. 자기가 본 결과의 링크를 남에게 보내는 것뿐이라
+// 제3자 권리 문제가 없다.
+//
+// 공개 목록 등록은 다르다. 버튼 한 번으로 남의 가게를 점수와 함께 게시할 수 있으면
+// 우리가 피하려던 문제가 그대로 돌아온다. 그래서 사이트 제어권을 확인한 뒤에만 올린다.
+function ResultActions({ data, apiBase }) {
+  const [copied, setCopied] = useState(false);
+  const [optin, setOptin] = useState(null); // null | {token, howto} | {status}
+  const [busy, setBusy] = useState(false);
+
+  const shareUrl = `${location.origin}${location.pathname}?url=${encodeURIComponent(data.host)}`;
+
+  async function copyShare() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  async function startOptin() {
+    if (!apiBase) return;
+    setBusy(true);
+    try {
+      const r = await fetch(`${apiBase}/api/optin?url=${encodeURIComponent(data.host)}`);
+      setOptin(await r.json());
+    } catch {
+      setOptin({ error: 'NETWORK', message: '연결하지 못했습니다.' });
+    }
+    setBusy(false);
+  }
+
+  async function confirmOptin() {
+    setBusy(true);
+    try {
+      const r = await fetch(`${apiBase}/api/optin?url=${encodeURIComponent(data.host)}`, { method: 'POST' });
+      const j = await r.json();
+      setOptin(prev => ({ ...prev, ...j }));
+    } catch {
+      setOptin(prev => ({ ...prev, error: 'NETWORK', message: '연결하지 못했습니다.' }));
+    }
+    setBusy(false);
+  }
+
+  return (
+    <section className="actions">
+      <div className="action-row">
+        <button className="btn" onClick={copyShare}>
+          {copied ? '복사했습니다' : '결과 링크 복사'}
+        </button>
+        {apiBase && !optin && (
+          <button className="btn ghost" onClick={startOptin} disabled={busy}>
+            이 사이트를 공개 목록에 등록
+          </button>
+        )}
+      </div>
+
+      {optin && optin.ok && (
+        <p className="notice">
+          공개 목록에 등록했습니다. 소유 확인은 {optin.via === 'meta' ? '메타태그' : '파일'}로 이루어졌습니다.
+        </p>
+      )}
+
+      {optin && !optin.ok && optin.token && (
+        <div className="optin-box">
+          <p>
+            <b>{data.host}</b> 를 공개 목록에 올리려면 이 사이트를 운영한다는 것을 확인해야 합니다.
+            아래 둘 중 <b>하나</b>만 하시면 됩니다.
+          </p>
+          <ol>
+            <li>
+              첫 화면 <code>&lt;head&gt;</code> 안에 넣기
+              <pre>{optin.howto?.meta}</pre>
+            </li>
+            <li>
+              또는 <code>/.well-known/ai-visibility-check.txt</code> 파일에 이 값 넣기
+              <pre>{optin.token}</pre>
+            </li>
+          </ol>
+          <button className="btn" onClick={confirmOptin} disabled={busy}>
+            {busy ? '확인 중…' : '등록했습니다. 확인해 주세요'}
+          </button>
+          {optin.message && <p className="hint">{optin.message}</p>}
+        </div>
+      )}
+
+      {optin && optin.error === 'SCAN_FIRST' && <p className="hint">{optin.message}</p>}
+    </section>
+  );
+}
+
 export default function App() {
   const [url, setUrl] = useState('');
   const [state, setState] = useState({ status: 'idle' });
@@ -259,18 +354,40 @@ export default function App() {
       .then(r => r.json())
       .then(setFacts)
       .catch(() => setFacts(null));
+
+    // 소유 확인을 마치고 등록된 사이트는 Worker 쪽에 쌓인다. 사전 계산 목록과 합쳐 보여준다.
+    if (API_BASE) {
+      fetch(API_BASE + '/api/showcase')
+        .then(r => r.json())
+        .then(d => setShowcase(prev => {
+          const seen = new Set(prev.map(x => x.host));
+          return [...prev, ...(d.items || []).filter(x => !seen.has(x.host))];
+        }))
+        .catch(() => {});
+    }
   }, []);
 
-  async function run(e) {
-    e.preventDefault();
-    if (!url.trim()) return;
+  // 공유 링크(?url=...)로 들어오면 바로 그 결과를 보여준다.
+  useEffect(() => {
+    const shared = new URLSearchParams(location.search).get('url');
+    if (shared) {
+      setUrl(shared);
+      scan(shared);
+    }
+    // 최초 1회만.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function scan(target) {
+    const value = (target || '').trim();
+    if (!value) return;
     if (!API_BASE) {
       setState({ status: 'static' });
       return;
     }
     setState({ status: 'loading' });
     try {
-      const res = await fetch(API_BASE + '/api/scan?url=' + encodeURIComponent(url.trim()));
+      const res = await fetch(API_BASE + '/api/scan?url=' + encodeURIComponent(value));
       const data = await res.json();
       // 한도 초과(429)와 사이트 차단(200 + error) 모두 안내 문구로 처리한다.
       if (!res.ok || data.error) {
@@ -281,6 +398,11 @@ export default function App() {
     } catch {
       setState({ status: 'limited', message: '분석 서버에 연결하지 못했습니다.' });
     }
+  }
+
+  function run(e) {
+    e.preventDefault();
+    scan(url);
   }
 
   const d = state.data;
@@ -364,6 +486,8 @@ export default function App() {
 
           <CheckList title="AI 가시성 항목" items={d.checks.filter(c => c.axis === 'ai')} />
           <CheckList title="구매여정 항목" items={d.checks.filter(c => c.axis === 'ux')} />
+
+          <ResultActions data={d} apiBase={API_BASE} />
 
           {d.cached && <p className="provenance">저장된 결과입니다 (최대 24시간 캐시).</p>}
         </main>
