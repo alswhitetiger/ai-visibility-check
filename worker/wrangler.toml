@@ -6,7 +6,6 @@ compatibility_date = "2026-09-01"
 [vars]
 ALLOWED_ORIGINS = "http://localhost:5173,https://alswhitetiger.github.io"
 DAILY_SCAN_LIMIT = "400"
-IP_DAILY_LIMIT = "5"
 CACHE_TTL_HOURS = "24"
 
 # 사용할 모델. API 결제를 연결하면 상위 모델로 바꾼다.

@@ -106,12 +106,7 @@ async function handleScan(request, env, origin) {
   const isJudge = !!env.JUDGE_CODE && code === env.JUDGE_CODE;
 
   if (!isJudge) {
-    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
     const day = today();
-    const perIp = await bump(env, 'ip:' + ip + ':' + day, Number(env.IP_DAILY_LIMIT || 5));
-    if (perIp.exceeded) {
-      return json({ error: 'IP_LIMIT', message: '오늘 무료 분석 횟수를 모두 사용했습니다.' }, 429, origin);
-    }
     const global = await bump(env, 'global:' + day, Number(env.DAILY_SCAN_LIMIT || 400));
     if (global.exceeded) {
       return json({
