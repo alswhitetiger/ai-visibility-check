@@ -188,6 +188,48 @@ function Survey({ stats }) {
   );
 }
 
+// 첫 화면. 처음 온 사람이 30초 안에 "이게 왜 필요한가"를 알게 하는 것이 목적이다.
+// 문장으로 설명하는 대신, 우리가 실제로 점검한 결과를 숫자로 먼저 보여준다.
+function Hero({ stats, onTry }) {
+  if (!stats || !stats.measured) return null;
+
+  const org = stats.byCheck.find(c => c.id === 'jsonld_org');
+  const crawler = stats.byCheck.find(c => c.id === 'ai_crawler');
+  const noOrg = org ? 100 - org.passRate : null;
+
+  return (
+    <section className="hero">
+      <div className="hero-stats">
+        <div>
+          <strong>{crawler ? crawler.passRate : '—'}%</strong>
+          <span>AI 크롤러를<br />열어둔 쇼핑몰</span>
+        </div>
+        <div className="accent">
+          <strong>{noOrg === null ? '—' : noOrg}%</strong>
+          <span>그런데 AI가 브랜드를<br />확인할 수 없는 곳</span>
+        </div>
+        <div>
+          <strong>{stats.measured}곳</strong>
+          <span>직접 점검한<br />국내 쇼핑몰</span>
+        </div>
+      </div>
+
+      <p className="hero-line">
+        문은 이미 열려 있습니다. <b>안에 읽을 것이 없을 뿐입니다.</b>
+      </p>
+
+      {onTry && (
+        <p className="hero-try">
+          바로 보기{' '}
+          {['www.chuu.co.kr', 'www.oliveyoung.co.kr', 'www.kurly.com'].map(h => (
+            <button key={h} className="chip" onClick={() => onTry(h)}>{h}</button>
+          ))}
+        </p>
+      )}
+    </section>
+  );
+}
+
 // 이름을 밝히되 점수는 매기지 않는 사실 점검표.
 // 여기 값은 전부 해당 사이트의 robots.txt 와 HTML 을 열면 확인되는 관측값이다.
 function Facts({ facts }) {
@@ -431,6 +473,10 @@ export default function App() {
         </button>
       </form>
 
+      {state.status === 'idle' && (
+        <Hero stats={stats} onTry={h => { setUrl(h); scan(h); }} />
+      )}
+
       {state.status === 'static' && (
         <p className="notice">
           실시간 분석은 준비 중입니다. 아래 저장된 분석 결과를 먼저 확인하세요.
@@ -487,6 +533,13 @@ export default function App() {
 
           <CheckList title="AI 가시성 항목" items={d.checks.filter(c => c.axis === 'ai')} />
           <CheckList title="구매여정 항목" items={d.checks.filter(c => c.axis === 'ux')} />
+
+          {!d.isProductPage && !d.pageSkipped && (
+            <p className="hint">
+              상품 상세페이지 주소를 넣으면 상품 구조화 데이터와 가격 표기까지 검사합니다.
+              첫 화면에는 그 항목이 없는 것이 정상이라 채점에서 제외했습니다.
+            </p>
+          )}
 
           <ResultActions data={d} apiBase={API_BASE} />
 

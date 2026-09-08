@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-08T00:56:28.420Z",
+  "generatedAt": "2026-09-08T01:03:50.565Z",
   "robotsRead": 46,
   "answerCrawler": {
     "fullyOpen": 32,
@@ -12,41 +12,27 @@
   "measured": 31,
   "pageSkipped": 17,
   "unreachable": 7,
-  "avgAiScore": 60,
-  "avgUxScore": 59,
+  "avgAiScore": 70,
+  "avgUxScore": 64,
   "quadrants": [
     {
       "quadrant": "healthy",
-      "count": 12
+      "count": 14
     },
     {
       "quadrant": "ai_invisible",
-      "count": 4
+      "count": 6
     },
     {
       "quadrant": "leaking",
-      "count": 5
+      "count": 7
     },
     {
       "quadrant": "critical",
-      "count": 10
+      "count": 4
     }
   ],
   "byCheck": [
-    {
-      "id": "jsonld_product",
-      "axis": "ai",
-      "passed": 0,
-      "total": 31,
-      "passRate": 0
-    },
-    {
-      "id": "price",
-      "axis": "ux",
-      "passed": 10,
-      "total": 31,
-      "passRate": 32
-    },
     {
       "id": "llms_txt",
       "axis": "ai",

@@ -252,6 +252,12 @@ export async function diagnose(targetUrl, opts = {}) {
   const hasCanonical = /<link[^>]+rel=["']canonical["']/i.test(html);
   const hasOg = /<meta[^>]+property=["']og:title["']/i.test(html);
   const hasProductLd = hasType(ld, 'Product') || hasType(ld, 'ItemList');
+
+  // 상품 구조화 데이터와 가격은 상품 상세페이지에 있는 것이 정상이다.
+  // 첫 화면에 없다고 감점하면 측정이 틀린다. 검사 대상이 상품 페이지일 때만 채점한다.
+  const looksLikeProductPage =
+    /\/product\/|\/goods\/|\/item\/|product_no=|goodsNo=|itemId=|\/dp\//i.test(u.href) ||
+    hasType(ld, 'Product');
   const hasOrgLd = hasType(ld, 'Organization') || hasType(ld, 'LocalBusiness');
   const priceInText = /[0-9][0-9,]{2,}\s*원/.test(body);
   const hasBizInfo = /사업자\s*등록\s*번호|사업자번호/.test(body);
@@ -295,6 +301,7 @@ export async function diagnose(targetUrl, opts = {}) {
     },
     {
       id: 'jsonld_product', axis: 'ai', weight: 15, pass: hasProductLd,
+      applies: looksLikeProductPage,
       label: '상품 구조화 데이터',
       detail: hasProductLd ? '있음' : '없음',
       why: '가격·재고·리뷰를 구조화해 두면 AI가 상품을 직접 추천할 수 있습니다.',
@@ -346,6 +353,7 @@ export async function diagnose(targetUrl, opts = {}) {
     },
     {
       id: 'price', axis: 'ux', weight: 15, pass: hasProductLd || priceInText,
+      applies: looksLikeProductPage,
       label: '가격 정보 노출',
       detail: hasProductLd ? '구조화 데이터에 있음' : priceInText ? '본문에 있음' : '확인 불가',
       why: '가격이 안 보이면 사람도 AI도 비교 후보에서 제외합니다.',
@@ -364,8 +372,11 @@ export async function diagnose(targetUrl, opts = {}) {
     },
   ];
 
+  // applies 가 false 인 항목은 이 페이지에 해당하지 않으므로 채점에서 뺀다.
+  const applicable = checks.filter(c => c.applies !== false);
+
   const score = (axis) => {
-    const items = checks.filter(c => c.axis === axis);
+    const items = applicable.filter(c => c.axis === axis);
     const total = items.reduce((s, c) => s + c.weight, 0);
     const got = items.reduce((s, c) => s + (c.pass ? c.weight : 0), 0);
     return Math.round((got / total) * 100);
@@ -385,8 +396,9 @@ export async function diagnose(targetUrl, opts = {}) {
     uxScore,
     quadrant,
     robots: rb,
-    checks: checks.map(({ weight, ...rest }) => rest),
-    fixes: checks
+    isProductPage: looksLikeProductPage,
+    checks: applicable.map(({ weight, applies, ...rest }) => rest),
+    fixes: applicable
       .filter(c => !c.pass)
       .sort((a, b) => b.weight - a.weight)
       .slice(0, 5)

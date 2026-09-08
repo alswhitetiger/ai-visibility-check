@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-08T00:56:28.420Z",
+  "generatedAt": "2026-09-08T01:03:50.565Z",
   "method": "공개된 robots.txt 와 HTML 을 그대로 읽어 확인한 사실입니다. 점수나 등급이 아니며, 누구나 같은 방법으로 재확인할 수 있습니다.",
   "items": [
     {
@@ -7,18 +7,18 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": true
+      "priceVisible": null
     },
     {
       "host": "frokyvape.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.11st.co.kr",
@@ -34,90 +34,90 @@
       "collected": true,
       "answerCrawler": null,
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.aritaum.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.attrangs.co.kr",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": true
+      "priceVisible": null
     },
     {
       "host": "www.bagazimuri.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.brandi.co.kr",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.bunjang.co.kr",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.chuu.co.kr",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.cjonstyle.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.danawa.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": true
+      "priceVisible": null
     },
     {
       "host": "www.e-himart.co.kr",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.elandmall.co.kr",
@@ -142,27 +142,27 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.eqlstore.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.etude.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": true
+      "priceVisible": null
     },
     {
       "host": "www.galleria.co.kr",
@@ -187,9 +187,9 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.hmall.com",
@@ -205,18 +205,18 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.hotping.co.kr",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": true
+      "priceVisible": null
     },
     {
       "host": "www.hyundaihmall.com",
@@ -241,36 +241,36 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": true
+      "priceVisible": null
     },
     {
       "host": "www.innisfree.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": true
+      "priceVisible": null
     },
     {
       "host": "www.kolonmall.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": true
+      "priceVisible": null
     },
     {
       "host": "www.kurly.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.lfmall.co.kr",
@@ -286,9 +286,9 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": true
+      "priceVisible": null
     },
     {
       "host": "www.lotteimall.com",
@@ -313,18 +313,18 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.mixxo.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.musinsa.com",
@@ -340,18 +340,18 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": true
+      "priceVisible": null
     },
     {
       "host": "www.nsmall.com",
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.ohou.se",
@@ -385,9 +385,9 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": true,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.thefaceshop.com",
@@ -403,18 +403,18 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.tmon.co.kr",
       "collected": true,
       "answerCrawler": null,
       "llmsTxt": false,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     },
     {
       "host": "www.wconcept.co.kr",
@@ -430,9 +430,9 @@
       "collected": true,
       "answerCrawler": "7/7",
       "llmsTxt": true,
-      "productLd": false,
+      "productLd": null,
       "orgLd": false,
-      "priceVisible": false
+      "priceVisible": null
     }
   ]
 }

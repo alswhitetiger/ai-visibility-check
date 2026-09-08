@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-09-08T00:56:28.420Z",
+  "generatedAt": "2026-09-08T01:03:50.565Z",
   "note": "공개에 동의한 사이트만 표시합니다. 순위가 아니라 점검 항목의 통과 여부입니다.",
   "items": [
     {
       "host": "dearbody.cafe24.com",
       "label": "DEAR BODY",
-      "ai_score": 70,
-      "ux_score": 59,
+      "ai_score": 82,
+      "ux_score": 51,
       "quadrant": "leaking"
     },
     {
       "host": "frokyvape.com",
       "label": "FROKY VAPE",
-      "ai_score": 60,
-      "ux_score": 67,
+      "ai_score": 71,
+      "ux_score": 80,
       "quadrant": "healthy"
     }
   ]
