@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-07T07:44:53.447Z",
+  "generatedAt": "2026-09-08T00:56:28.420Z",
   "method": "공개된 robots.txt 와 HTML 을 그대로 읽어 확인한 사실입니다. 점수나 등급이 아니며, 누구나 같은 방법으로 재확인할 수 있습니다.",
   "items": [
     {
@@ -109,6 +109,15 @@
       "productLd": false,
       "orgLd": false,
       "priceVisible": true
+    },
+    {
+      "host": "www.e-himart.co.kr",
+      "collected": true,
+      "answerCrawler": "7/7",
+      "llmsTxt": true,
+      "productLd": false,
+      "orgLd": false,
+      "priceVisible": false
     },
     {
       "host": "www.elandmall.co.kr",
@@ -246,15 +255,6 @@
       "priceVisible": true
     },
     {
-      "host": "www.interpark.com",
-      "collected": true,
-      "answerCrawler": "7/7",
-      "llmsTxt": false,
-      "productLd": false,
-      "orgLd": true,
-      "priceVisible": true
-    },
-    {
       "host": "www.kolonmall.com",
       "collected": true,
       "answerCrawler": "7/7",
@@ -282,6 +282,15 @@
       "priceVisible": null
     },
     {
+      "host": "www.lotteeatz.com",
+      "collected": true,
+      "answerCrawler": "7/7",
+      "llmsTxt": false,
+      "productLd": false,
+      "orgLd": true,
+      "priceVisible": true
+    },
+    {
       "host": "www.lotteimall.com",
       "collected": false,
       "answerCrawler": "3/7",
@@ -298,6 +307,24 @@
       "productLd": null,
       "orgLd": null,
       "priceVisible": null
+    },
+    {
+      "host": "www.missha.com",
+      "collected": true,
+      "answerCrawler": "7/7",
+      "llmsTxt": false,
+      "productLd": false,
+      "orgLd": false,
+      "priceVisible": false
+    },
+    {
+      "host": "www.mixxo.com",
+      "collected": true,
+      "answerCrawler": "7/7",
+      "llmsTxt": false,
+      "productLd": false,
+      "orgLd": true,
+      "priceVisible": false
     },
     {
       "host": "www.musinsa.com",

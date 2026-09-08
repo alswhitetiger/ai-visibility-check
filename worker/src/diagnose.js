@@ -34,11 +34,24 @@ const TRAINING_CRAWLERS = [
   'Google-Extended', 'CCBot', 'Applebot-Extended', 'meta-externalagent',
 ];
 
+// 정상적인 HTTP 클라이언트라면 보내는 헤더들.
+// 이걸 빠뜨리면 형식이 어긋난 요청으로 보여 방화벽이 403 을 내는 경우가 많다.
+// 실측에서 이 헤더만 채워도 거부하던 사이트 절반이 정상 응답했다.
+// User-Agent 는 그대로 우리 이름이다. 신원을 숨기는 것이 아니라 요청을 바르게 만드는 것이다.
+const BASE_HEADERS = {
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+};
+
 async function get(url, ua, timeoutMs = 10000) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': ua }, signal: ctl.signal, redirect: 'follow' });
+    const res = await fetch(url, {
+      headers: { ...BASE_HEADERS, 'User-Agent': ua },
+      signal: ctl.signal,
+      redirect: 'follow',
+    });
     return { ok: res.ok, status: res.status, text: res.ok ? await res.text() : '' };
   } catch {
     return { ok: false, status: 0, text: '' };

@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-09-07T07:44:53.447Z",
-  "robotsRead": 43,
+  "generatedAt": "2026-09-08T00:56:28.420Z",
+  "robotsRead": 46,
   "answerCrawler": {
-    "fullyOpen": 29,
+    "fullyOpen": 32,
     "partlyBlocked": 9,
     "fullyBlocked": 5
   },
   "namedAiBots": 19,
   "blocksUnnamedCrawlers": 17,
-  "scanned": 45,
-  "measured": 28,
+  "scanned": 48,
+  "measured": 31,
   "pageSkipped": 17,
-  "unreachable": 14,
-  "avgAiScore": 61,
-  "avgUxScore": 61,
+  "unreachable": 7,
+  "avgAiScore": 60,
+  "avgUxScore": 59,
   "quadrants": [
     {
       "quadrant": "healthy",
@@ -25,11 +25,11 @@
     },
     {
       "quadrant": "leaking",
-      "count": 4
+      "count": 5
     },
     {
       "quadrant": "critical",
-      "count": 8
+      "count": 10
     }
   ],
   "byCheck": [
@@ -37,105 +37,105 @@
       "id": "jsonld_product",
       "axis": "ai",
       "passed": 0,
-      "total": 28,
+      "total": 31,
       "passRate": 0
     },
     {
       "id": "price",
       "axis": "ux",
       "passed": 10,
-      "total": 28,
-      "passRate": 36
+      "total": 31,
+      "passRate": 32
     },
     {
       "id": "llms_txt",
       "axis": "ai",
-      "passed": 12,
-      "total": 28,
-      "passRate": 43
+      "passed": 13,
+      "total": 31,
+      "passRate": 42
     },
     {
       "id": "jsonld_org",
       "axis": "ai",
-      "passed": 12,
-      "total": 28,
-      "passRate": 43
+      "passed": 13,
+      "total": 31,
+      "passRate": 42
     },
     {
       "id": "img_alt",
       "axis": "ux",
-      "passed": 13,
-      "total": 28,
-      "passRate": 46
+      "passed": 14,
+      "total": 31,
+      "passRate": 45
     },
     {
       "id": "business_info",
       "axis": "ux",
-      "passed": 16,
-      "total": 28,
-      "passRate": 57
-    },
-    {
-      "id": "description",
-      "axis": "ux",
-      "passed": 18,
-      "total": 28,
-      "passRate": 64
+      "passed": 17,
+      "total": 31,
+      "passRate": 55
     },
     {
       "id": "viewport",
       "axis": "ux",
       "passed": 18,
-      "total": 28,
-      "passRate": 64
-    },
-    {
-      "id": "sitemap",
-      "axis": "ai",
-      "passed": 19,
-      "total": 28,
-      "passRate": 68
+      "total": 31,
+      "passRate": 58
     },
     {
       "id": "canonical",
       "axis": "ai",
       "passed": 19,
-      "total": 28,
-      "passRate": 68
+      "total": 31,
+      "passRate": 61
+    },
+    {
+      "id": "description",
+      "axis": "ux",
+      "passed": 19,
+      "total": 31,
+      "passRate": 61
     },
     {
       "id": "js_dependency",
       "axis": "ai",
-      "passed": 21,
-      "total": 28,
-      "passRate": 75
+      "passed": 22,
+      "total": 31,
+      "passRate": 71
+    },
+    {
+      "id": "sitemap",
+      "axis": "ai",
+      "passed": 22,
+      "total": 31,
+      "passRate": 71
     },
     {
       "id": "title",
       "axis": "ux",
-      "passed": 23,
-      "total": 28,
-      "passRate": 82
+      "passed": 25,
+      "total": 31,
+      "passRate": 81
     },
     {
       "id": "og",
       "axis": "ux",
-      "passed": 24,
-      "total": 28,
-      "passRate": 86
+      "passed": 26,
+      "total": 31,
+      "passRate": 84
     },
     {
       "id": "ai_crawler",
       "axis": "ai",
-      "passed": 28,
-      "total": 28,
+      "passed": 31,
+      "total": 31,
       "passRate": 100
     },
     {
       "id": "ai_training",
       "axis": "ai",
-      "passed": 28,
-      "total": 28,
+      "passed": 31,
+      "total": 31,
       "passRate": 100
     }
   ]

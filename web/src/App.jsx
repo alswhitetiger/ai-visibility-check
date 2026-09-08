@@ -231,8 +231,9 @@ function Facts({ facts }) {
         </button>
       )}
       <p className="hint">
-        &lsquo;—&rsquo; 는 해당 사이트가 robots.txt 에서 이름 없는 크롤러를 막고 있어
-        페이지를 수집하지 않은 항목입니다. 그 지시를 그대로 따랐습니다.
+        &lsquo;—&rsquo; 는 이 목록을 만드는 <b>대량 조사</b>에서 건너뛴 항목입니다. 해당 사이트가
+        robots.txt 로 이름 없는 크롤러를 막고 있어 그 지시를 따랐습니다.
+        위 입력창에 직접 넣으시면 사용자 요청 조회로 진단됩니다.
       </p>
     </section>
   );
