@@ -17,7 +17,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { diagnose } from '../worker/src/diagnose.js';
+import { diagnose, DIAGNOSIS_VERSION } from '../worker/src/diagnose.js';
 import { brandProbePrompt } from '../worker/src/ai.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -84,7 +84,7 @@ for (const t of targets) {
     console.log(`페이지 수집 생략 (답변 크롤러 ${rb.answerAllowed}/${rb.answerTotal} 허용)`);
     rows.push({
       host: r.host, state: 'page_skipped', optedIn: !!t.optedIn, label: t.label,
-      checks: [], robots: rb,
+      checks: [], robots: r.robots,
     });
     await sleep(1200);
     continue;
@@ -123,13 +123,15 @@ const measured = rows.filter(r => r.state === 'ok');
 
 const checkIds = [...new Set(measured.flatMap(r => r.checks.map(c => c.id)))];
 const byCheck = checkIds.map(id => {
-  const items = measured.map(r => r.checks.find(c => c.id === id)).filter(Boolean);
+  const all = measured.map(r => r.checks.find(c => c.id === id)).filter(Boolean);
+  const items = all.filter(c => c.pass !== null);
   const passed = items.filter(c => c.pass).length;
   return {
     id,
     axis: items[0]?.axis,
     passed,
     total: items.length,
+    unknown: all.length - items.length,
     passRate: items.length ? Math.round((passed / items.length) * 100) : null,
   };
 });
@@ -150,6 +152,7 @@ const answerPartlyBlocked = withRobots.filter(
 const answerFullyBlocked = withRobots.filter(r => r.robots.answerAllowed === 0).length;
 
 const stats = {
+  version: DIAGNOSIS_VERSION,
   generatedAt: new Date().toISOString(),
   robotsRead: withRobots.length,
   answerCrawler: {
@@ -171,6 +174,7 @@ const stats = {
 
 // ---- 옵트인 공개 목록 ------------------------------------------------------
 const showcase = {
+  version: DIAGNOSIS_VERSION,
   generatedAt: stats.generatedAt,
   note: '공개에 동의한 사이트만 표시합니다. 순위가 아니라 점검 항목의 통과 여부입니다.',
   items: rows
@@ -195,6 +199,7 @@ const has = (row, id) => {
 };
 
 const facts = {
+  version: DIAGNOSIS_VERSION,
   generatedAt: stats.generatedAt,
   method: '공개된 robots.txt 와 HTML 을 그대로 읽어 확인한 사실입니다. '
         + '점수나 등급이 아니며, 누구나 같은 방법으로 재확인할 수 있습니다.',

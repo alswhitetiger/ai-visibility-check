@@ -1,4 +1,4 @@
-import { diagnose, QUADRANT_LABEL } from './diagnose.js';
+import { diagnose, QUADRANT_LABEL, DIAGNOSIS_VERSION } from './diagnose.js';
 import { askAI, brandProbePrompt } from './ai.js';
 
 const json = (data, status, origin) =>
@@ -34,7 +34,9 @@ async function readCache(env, url, ttlHours) {
   const row = await env.DB.prepare('SELECT * FROM scans WHERE url = ?').bind(url).first();
   if (!row) return null;
   if (Date.now() - row.created_at > ttlHours * 3600 * 1000) return null;
-  return { ...JSON.parse(row.result_json), cached: true };
+  const result = JSON.parse(row.result_json);
+  if (result.version !== DIAGNOSIS_VERSION) return null;
+  return { ...result, cached: true };
 }
 
 async function writeCache(env, result) {
@@ -96,7 +98,7 @@ async function handleScan(request, env, origin) {
   if (!target) return json({ error: 'INVALID_URL' }, 400, origin);
 
   const ttl = Number(env.CACHE_TTL_HOURS || 24);
-  const cached = await readCache(env, target.href, ttl);
+  const cached = params.get('refresh') === '1' ? null : await readCache(env, target.href, ttl);
   if (cached) return json(cached, 200, origin);
 
   // 심사위원용 우회 코드. 설정돼 있고 일치하면 한도를 건너뛴다.
@@ -124,7 +126,7 @@ async function handleScan(request, env, origin) {
     return json({
       error: 'BLOCKED_BY_SITE',
       message: '이 사이트는 자동 접근을 차단하고 있어 진단할 수 없습니다. '
-             + '차단 자체가 AI 크롤러에게도 동일하게 적용될 가능성이 큽니다.',
+             + '다른 AI 서비스의 접근 여부는 이 결과만으로 알 수 없습니다.',
     }, 200, origin);
   }
   // 서버가 우리를 거부한 경우. 우회하지 않고 그대로 알린다.
@@ -134,7 +136,7 @@ async function handleScan(request, env, origin) {
       error: 'REFUSED_BY_SITE',
       status: result.status,
       message: '이 사이트는 자동 접근을 거부했습니다(HTTP ' + result.status + '). '
-             + '저희는 접근을 우회하지 않습니다. 같은 차단이 AI 크롤러에도 적용될 가능성이 큽니다.',
+             + '다른 AI 서비스의 접근 여부는 이 결과만으로 알 수 없습니다.',
     }, 200, origin);
   }
   if (result.error) return json(result, 502, origin);
@@ -142,20 +144,21 @@ async function handleScan(request, env, origin) {
   result.quadrantLabel = QUADRANT_LABEL[result.quadrant];
 
   // AI 실제 질의. 실패해도 규칙 기반 결과는 그대로 돌려준다.
-  const brand = params.get('brand') || target.host.replace(/^www\./, '');
-  const probe = await askAI(env, brandProbePrompt(brand, target.host));
+  const brand = result.brand || target.host.replace(/^www\./, '');
+  const previousAnswer = await loadAiAnswer(env, target.host);
+  const probe = result.pageSkipped || previousAnswer ? { ok: false, tried: [] } : await askAI(env, brandProbePrompt(brand, target.host));
   if (probe.ok) {
-    result.ai = { provider: probe.provider, model: probe.model, answer: probe.json };
+    result.ai = { provider: probe.provider, model: probe.model, answer: probe.json, collectedAt: Date.now() };
     await saveAiAnswer(env, target.host, result.ai);
   } else {
     // 이번 호출이 실패해도 예전에 받아 둔 응답이 있으면 그것을 쓴다. 수집 시점을 함께 밝힌다.
-    const previous = await loadAiAnswer(env, target.host);
+    const previous = previousAnswer;
     result.ai = previous || {
       provider: null,
       model: null,
       unavailable: true,
       // 실패 내역은 운영자만 본다. 일반 사용자에게는 프로바이더 이름만 노출한다.
-      tried: isJudge ? probe.tried : probe.tried.map(t => ({ provider: t.provider, kind: t.kind || t.skipped })),
+      tried: probe.tried.map(t => ({ provider: t.provider, kind: t.kind || t.skipped })),
     };
   }
 
@@ -265,7 +268,7 @@ export default {
 
     try {
       if (pathname === '/api/health') {
-        return json({ ok: true, ts: Date.now() }, 200, origin);
+        return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now() }, 200, origin);
       }
       if (pathname === '/api/scan') {
         return await handleScan(request, env, origin);

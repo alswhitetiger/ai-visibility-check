@@ -1,72 +1,54 @@
-# AI Visibility Check
+# 가게 체크 · AI Visibility Check
 
-> 당신의 쇼핑몰은 **사람 손님**과 **AI 손님**, 둘 다 받을 준비가 되어 있습니까?
+쇼핑몰 주소를 넣으면 빠진 기본 정보를 찾고, 무엇부터 고치면 좋을지 안내합니다.
 
-원티드 AI Championship 2026 출품작.
+**[서비스 열기](https://alswhitetiger.github.io/ai-visibility-check/)** · 원티드 AI Championship 2026 출품작
 
-## 해결하려는 문제
+## 사용 방법
 
-사람들이 검색창 대신 AI에게 묻기 시작했다. 그런데 셀러에게는
-**"AI가 우리 브랜드를 어떻게 말하는지"** 확인할 방법이 없다.
-경쟁사만 추천되고 우리는 언급조차 안 돼도 그 이유를 모른다.
+1. 쇼핑몰 또는 상품 페이지 주소를 입력합니다. 주소가 없어도 가상 예시 리포트를 볼 수 있습니다.
+2. AI가 읽을 정보와 고객에게 보여줄 정보의 준비 상태를 확인합니다.
+3. 먼저 고칠 3가지의 설명과 코드 예시를 확인합니다. 코드의 교체 문구는 실제 정보로 바꿔야 합니다.
+4. 사이트를 직접 수정한 뒤 다시 검사합니다. 같은 브라우저의 이전 검사와 항목별 변화를 비교합니다.
 
-이 서비스는 쇼핑몰 URL 하나로 두 축을 동시에 진단한다.
+## 검사 범위
 
-| 축 | 질문 |
-|---|---|
-| **AI 가시성** | AI가 우리를 **찾고 이해할 수 있는가** |
-| **구매여정** | 사람이 들어와서 **살 수 있는가** |
+- 입력한 페이지와 robots.txt, llms.txt, sitemap.xml만 조회합니다. 상품 목록을 자동 순회하지 않습니다.
+- HTML 원본의 브랜드·상품 데이터, 제목·설명, 이미지 설명, 모바일 설정 등을 점검합니다.
+- 일반 페이지에는 상품 데이터·가격 점수를 적용하지 않습니다. 조회 실패는 미확인으로 구분합니다.
+- llms.txt와 학습용 AI 설정은 참고 항목이며 점수에서 제외합니다.
+- 점수는 자체 가중치를 사용한 기본 정보 점검입니다. 실제 AI 검색 노출, 추천 순위, 매출 또는 결제 성공 여부를 측정하지 않습니다.
+- AI API에는 브랜드 정보를 알려주고 질의합니다. 웹 검색을 사용하지 않은 모델 응답이며, 두 점수에는 반영하지 않습니다. 모델명과 저장된 응답의 수집일을 표시합니다.
 
-결과는 2x2 사분면으로 제시한다. 특히 *"지금은 잘 팔리는데 AI 검색으로
-넘어가면 존재가 지워지는 가게"* 구간을 드러내는 것이 목적이다.
+## 구조와 안정성
 
-## AI 활용 방식
+- web/: React + Vite, GitHub Pages
+- worker/: Cloudflare Worker + D1. linkedom으로 HTML을 읽고 robots-parser로 URL별 규칙을 판정합니다.
+- scripts/build-example.mjs: 외부 호출 없이 가상 전후 예시를 생성합니다.
+- scripts/precompute.mjs: 별도 대량 조사 도구. 이전 기준의 정적 통계는 현재 첫 화면에 노출하지 않습니다.
+- 진단 버전이 다른 캐시는 재사용하지 않습니다. 재검사는 일일 한도에 포함됩니다.
+- 기존 AI 응답은 수집일과 함께 재사용합니다. 보관된 응답이 없으면 Gemini → OpenAI → Anthropic 순서로 설정된 키를 사용합니다. AI 호출이 실패해도 규칙 검사 결과와 가상 예시를 볼 수 있습니다.
+- 브라우저에 API 키를 넣지 않습니다. 공개 목록 등록에는 사이트 제어권 확인이 필요합니다.
 
-규칙 기반 검사와 LLM을 **의도적으로 분리**했다.
+## 개발·검증
 
-- **LLM 없이 판정** (전체 진단의 약 70%) — robots.txt의 AI 크롤러 차단 여부,
-  llms.txt 유무, JSON-LD 구조화 데이터, JS 렌더링 의존도, sitemap, 상품 정보 노출 등
-- **LLM 사용** — 실제 AI에게 브랜드를 질의한 응답 수집, 리포트 문장 생성
+~~~sh
+cd worker
+npm ci
+npm test
+cd ..
+node scripts/build-example.mjs
+cd web
+npm ci
+npm run dev
+npm run build
+~~~
 
-"AI가 우리를 모르는 이유"의 대부분은 파싱만으로 판정된다. LLM은 측정이
-꼭 필요한 지점에만 쓴다.
+실시간 검사에는 VITE_API_BASE를 Worker 주소로 설정합니다. 없으면 가상 예시를 사용할 수 있습니다.
+Worker 배포는 worker/에서 npm run deploy를 실행합니다. GitHub Pages의 main 배포는 테스트와 빌드가 통과한 뒤 진행됩니다.
 
-## 사용한 AI 도구
-
-3단 폴백 구조. 앞 단계가 한도에 걸리면 자동으로 다음 단계로 넘어간다.
-
-```
-① Google Gemini API (무료 티어)   ← 사실상 여기서 종결
-② OpenAI API                      ← 안전망
-③ Anthropic Claude API            ← 최후 보루
-④ 사전 계산 결과 (정적 JSON)       ← 전부 소진돼도 화면은 살아있음
-```
-
-리포트 하단에 어떤 모델이 답했는지 항상 표기한다.
-
-## 구조
-
-```
-web/      React + Vite  → GitHub Pages (제출 링크. 항상 작동)
-worker/   Cloudflare Worker + D1 → 수집 / AI 호출 / 캐싱
-scripts/  사전 계산 스크립트
-data/     사전 계산 결과 (web/public/data)
-```
-
-프론트에는 API 키가 존재하지 않는다. 모든 키는 Worker secret에만 둔다.
-
-## 개발
-
-```bash
-# 프론트
-cd web && npm install && npm run dev
-
-# 워커
-cd worker && npm install && npm run dev
-```
-
-자세한 설정은 [docs/SETUP.md](docs/SETUP.md) 참고.
+자세한 환경 설정: [docs/SETUP.md](docs/SETUP.md). 제출 설명: [docs/SUBMISSION.md](docs/SUBMISSION.md).
 
 ## 라이선스
 
-MIT
+MIT. 사용한 의존성의 라이선스는 해당 패키지를 따릅니다.

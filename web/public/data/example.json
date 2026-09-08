@@ -1,0 +1,478 @@
+{
+  "before": {
+    "url": "https://sample-shop.example/",
+    "host": "sample-shop.example",
+    "aiScore": 80,
+    "uxScore": 67,
+    "quadrant": "healthy",
+    "robots": {
+      "answer": [
+        {
+          "ua": "OAI-SearchBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "ChatGPT-User",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Claude-User",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Claude-SearchBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "PerplexityBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Perplexity-User",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Gemini-Deep-Research",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        }
+      ],
+      "training": [
+        {
+          "ua": "GPTBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "ClaudeBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "anthropic-ai",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Google-Extended",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "CCBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Applebot-Extended",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "meta-externalagent",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        }
+      ],
+      "answerAllowed": 7,
+      "answerTotal": 7,
+      "trainingAllowed": 7,
+      "trainingTotal": 7,
+      "namedCount": 0,
+      "namedBlock": false,
+      "wildcardAccess": "allowed"
+    },
+    "isProductPage": false,
+    "version": "2026-09-08.3",
+    "brand": "",
+    "checks": [
+      {
+        "id": "ai_crawler",
+        "axis": "ai",
+        "weight": 25,
+        "pass": true,
+        "label": "AI 답변 크롤러 접근 허용",
+        "detail": "답변용 7종 중 7종 허용",
+        "why": "사용자가 AI에게 물었을 때 사이트를 찾아가 인용하는 크롤러입니다. 게시된 접근 규칙을 확인하며 실제 AI 방문이나 검색 노출을 보장하지 않습니다."
+      },
+      {
+        "id": "ai_training",
+        "axis": "ai",
+        "weight": 0,
+        "pass": true,
+        "label": "학습용 크롤러 (참고)",
+        "detail": "학습용 7종 중 7종 허용",
+        "why": "모델 학습 데이터 수집용입니다. 막는 것도 정당한 선택이라 점수에 반영하지 않습니다."
+      },
+      {
+        "id": "llms_txt",
+        "axis": "ai",
+        "weight": 0,
+        "pass": false,
+        "label": "llms.txt 제공",
+        "detail": "안내 파일 형식 미검출",
+        "why": "선택적인 AI 안내 파일입니다. 검색 노출의 필수 조건이 아니며 점수에 반영하지 않습니다."
+      },
+      {
+        "id": "jsonld_org",
+        "axis": "ai",
+        "weight": 15,
+        "pass": false,
+        "label": "조직 구조화 데이터",
+        "detail": "없음",
+        "why": "브랜드 정보를 일정한 형식으로 제공하는지 확인합니다. 이 정보가 없어도 AI가 브랜드를 알 수 있습니다."
+      },
+      {
+        "id": "js_dependency",
+        "axis": "ai",
+        "weight": 20,
+        "pass": true,
+        "label": "자바스크립트 없이도 내용이 보임",
+        "detail": "HTML 원본 텍스트 691자",
+        "why": "원본 HTML 텍스트 600자 기준의 간이 점검입니다. 글의 품질이나 실제 렌더링을 시험하지 않습니다."
+      },
+      {
+        "id": "sitemap",
+        "axis": "ai",
+        "weight": 8,
+        "pass": true,
+        "label": "sitemap.xml",
+        "detail": "사이트맵 형식과 주소 항목 확인",
+        "why": "sitemap.xml 기본 경로를 확인합니다. 다른 주소에 사이트맵이 있을 수도 있습니다."
+      },
+      {
+        "id": "canonical",
+        "axis": "ai",
+        "weight": 7,
+        "pass": true,
+        "label": "canonical 지정",
+        "detail": "있음",
+        "why": "중복 주소가 있을 때 어느 것이 정본인지 알려줍니다."
+      },
+      {
+        "id": "title",
+        "axis": "ux",
+        "weight": 15,
+        "pass": true,
+        "label": "페이지 제목 품질",
+        "detail": "21자 · 예시 가게 | 편안한 일상 의류 쇼핑몰",
+        "why": "브라우저에 표시할 제목의 길이(10~60자)를 점검합니다. 검색 결과에 그대로 쓰인다는 의미는 아닙니다."
+      },
+      {
+        "id": "description",
+        "axis": "ux",
+        "weight": 12,
+        "pass": false,
+        "label": "메타 설명",
+        "detail": "없음",
+        "why": "가게나 페이지를 소개하는 문장입니다. 40자 이상인지 확인합니다."
+      },
+      {
+        "id": "viewport",
+        "axis": "ux",
+        "weight": 15,
+        "pass": true,
+        "label": "모바일 뷰포트",
+        "detail": "있음",
+        "why": "모바일 화면 너비 설정을 확인합니다. 실제 휴대폰 화면이나 결제 기능의 동작 검사는 아닙니다."
+      },
+      {
+        "id": "img_alt",
+        "axis": "ux",
+        "weight": 13,
+        "pass": false,
+        "label": "이미지 대체 텍스트",
+        "detail": "0/1 (0%)",
+        "why": "이미지를 설명하는 alt 글의 비율을 확인합니다. 장식용 이미지의 빈 설명은 적절할 수 있습니다."
+      },
+      {
+        "id": "og",
+        "axis": "ux",
+        "weight": 10,
+        "pass": true,
+        "label": "공유용 OG 태그",
+        "detail": "있음",
+        "why": "링크가 공유될 때 어떻게 보이는지를 결정합니다."
+      },
+      {
+        "id": "business_info",
+        "axis": "ux",
+        "weight": 10,
+        "pass": true,
+        "label": "사업자 정보 표기",
+        "detail": "있음",
+        "why": "사업자번호 관련 문구의 존재만 확인합니다. 번호의 유효성이나 법적 적합성 판정은 아닙니다."
+      }
+    ],
+    "fixes": [
+      {
+        "id": "jsonld_org",
+        "label": "조직 구조화 데이터",
+        "why": "브랜드 정보를 일정한 형식으로 제공하는지 확인합니다. 이 정보가 없어도 AI가 브랜드를 알 수 있습니다."
+      },
+      {
+        "id": "img_alt",
+        "label": "이미지 대체 텍스트",
+        "why": "이미지를 설명하는 alt 글의 비율을 확인합니다. 장식용 이미지의 빈 설명은 적절할 수 있습니다."
+      },
+      {
+        "id": "description",
+        "label": "메타 설명",
+        "why": "가게나 페이지를 소개하는 문장입니다. 40자 이상인지 확인합니다."
+      }
+    ],
+    "scannedAt": 1788836400000,
+    "example": true,
+    "exampleAfter": false
+  },
+  "after": {
+    "url": "https://sample-shop.example/",
+    "host": "sample-shop.example",
+    "aiScore": 100,
+    "uxScore": 100,
+    "quadrant": "healthy",
+    "robots": {
+      "answer": [
+        {
+          "ua": "OAI-SearchBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "ChatGPT-User",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Claude-User",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Claude-SearchBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "PerplexityBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Perplexity-User",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Gemini-Deep-Research",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        }
+      ],
+      "training": [
+        {
+          "ua": "GPTBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "ClaudeBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "anthropic-ai",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Google-Extended",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "CCBot",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "Applebot-Extended",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        },
+        {
+          "ua": "meta-externalagent",
+          "access": "allowed",
+          "matchedBy": "wildcard",
+          "line": 2
+        }
+      ],
+      "answerAllowed": 7,
+      "answerTotal": 7,
+      "trainingAllowed": 7,
+      "trainingTotal": 7,
+      "namedCount": 0,
+      "namedBlock": false,
+      "wildcardAccess": "allowed"
+    },
+    "isProductPage": false,
+    "version": "2026-09-08.3",
+    "brand": "예시 가게",
+    "checks": [
+      {
+        "id": "ai_crawler",
+        "axis": "ai",
+        "weight": 25,
+        "pass": true,
+        "label": "AI 답변 크롤러 접근 허용",
+        "detail": "답변용 7종 중 7종 허용",
+        "why": "사용자가 AI에게 물었을 때 사이트를 찾아가 인용하는 크롤러입니다. 게시된 접근 규칙을 확인하며 실제 AI 방문이나 검색 노출을 보장하지 않습니다."
+      },
+      {
+        "id": "ai_training",
+        "axis": "ai",
+        "weight": 0,
+        "pass": true,
+        "label": "학습용 크롤러 (참고)",
+        "detail": "학습용 7종 중 7종 허용",
+        "why": "모델 학습 데이터 수집용입니다. 막는 것도 정당한 선택이라 점수에 반영하지 않습니다."
+      },
+      {
+        "id": "llms_txt",
+        "axis": "ai",
+        "weight": 0,
+        "pass": false,
+        "label": "llms.txt 제공",
+        "detail": "안내 파일 형식 미검출",
+        "why": "선택적인 AI 안내 파일입니다. 검색 노출의 필수 조건이 아니며 점수에 반영하지 않습니다."
+      },
+      {
+        "id": "jsonld_org",
+        "axis": "ai",
+        "weight": 15,
+        "pass": true,
+        "label": "조직 구조화 데이터",
+        "detail": "있음",
+        "why": "브랜드 정보를 일정한 형식으로 제공하는지 확인합니다. 이 정보가 없어도 AI가 브랜드를 알 수 있습니다."
+      },
+      {
+        "id": "js_dependency",
+        "axis": "ai",
+        "weight": 20,
+        "pass": true,
+        "label": "자바스크립트 없이도 내용이 보임",
+        "detail": "HTML 원본 텍스트 691자",
+        "why": "원본 HTML 텍스트 600자 기준의 간이 점검입니다. 글의 품질이나 실제 렌더링을 시험하지 않습니다."
+      },
+      {
+        "id": "sitemap",
+        "axis": "ai",
+        "weight": 8,
+        "pass": true,
+        "label": "sitemap.xml",
+        "detail": "사이트맵 형식과 주소 항목 확인",
+        "why": "sitemap.xml 기본 경로를 확인합니다. 다른 주소에 사이트맵이 있을 수도 있습니다."
+      },
+      {
+        "id": "canonical",
+        "axis": "ai",
+        "weight": 7,
+        "pass": true,
+        "label": "canonical 지정",
+        "detail": "있음",
+        "why": "중복 주소가 있을 때 어느 것이 정본인지 알려줍니다."
+      },
+      {
+        "id": "title",
+        "axis": "ux",
+        "weight": 15,
+        "pass": true,
+        "label": "페이지 제목 품질",
+        "detail": "21자 · 예시 가게 | 편안한 일상 의류 쇼핑몰",
+        "why": "브라우저에 표시할 제목의 길이(10~60자)를 점검합니다. 검색 결과에 그대로 쓰인다는 의미는 아닙니다."
+      },
+      {
+        "id": "description",
+        "axis": "ux",
+        "weight": 12,
+        "pass": true,
+        "label": "메타 설명",
+        "detail": "67자",
+        "why": "가게나 페이지를 소개하는 문장입니다. 40자 이상인지 확인합니다."
+      },
+      {
+        "id": "viewport",
+        "axis": "ux",
+        "weight": 15,
+        "pass": true,
+        "label": "모바일 뷰포트",
+        "detail": "있음",
+        "why": "모바일 화면 너비 설정을 확인합니다. 실제 휴대폰 화면이나 결제 기능의 동작 검사는 아닙니다."
+      },
+      {
+        "id": "img_alt",
+        "axis": "ux",
+        "weight": 13,
+        "pass": true,
+        "label": "이미지 대체 텍스트",
+        "detail": "1/1 (100%)",
+        "why": "이미지를 설명하는 alt 글의 비율을 확인합니다. 장식용 이미지의 빈 설명은 적절할 수 있습니다."
+      },
+      {
+        "id": "og",
+        "axis": "ux",
+        "weight": 10,
+        "pass": true,
+        "label": "공유용 OG 태그",
+        "detail": "있음",
+        "why": "링크가 공유될 때 어떻게 보이는지를 결정합니다."
+      },
+      {
+        "id": "business_info",
+        "axis": "ux",
+        "weight": 10,
+        "pass": true,
+        "label": "사업자 정보 표기",
+        "detail": "있음",
+        "why": "사업자번호 관련 문구의 존재만 확인합니다. 번호의 유효성이나 법적 적합성 판정은 아닙니다."
+      }
+    ],
+    "fixes": [],
+    "scannedAt": 1788836700000,
+    "example": true,
+    "exampleAfter": true
+  }
+}

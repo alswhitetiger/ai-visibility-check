@@ -12,9 +12,10 @@ const PROVIDERS = [
   { name: 'anthropic', keyVar: 'ANTHROPIC_API_KEY', modelVar: 'ANTHROPIC_MODEL', model: 'claude-haiku-4-5-20251001' },
 ];
 
-const TIMEOUT_MS = 25000;
+const TIMEOUT_MS = 10000;
 
-const RETRY_DELAYS = [1200, 3000];
+// Interactive scans fail over immediately instead of making the visitor wait.
+const RETRY_DELAYS = [];
 
 // 재시도로 이득이 있는 것만 넣는다.
 // region(지역 제한)은 요청을 처리한 Cloudflare 콜로의 egress 위치에 달려 있어
