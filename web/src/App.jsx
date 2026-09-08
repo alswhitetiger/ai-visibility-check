@@ -465,7 +465,7 @@ export default function App() {
                 학습용 크롤러는 {d.robots.trainingTotal}종 중 {d.robots.trainingAllowed}종 허용.
               </p>
               <p className="provenance">
-                이 사이트는 robots.txt 에서 이름 없는 크롤러를 차단하고 있습니다.
+                이 사이트는 robots.txt 에서 <b>저희 도구를 이름으로 지목해</b> 막고 있습니다.
                 그 지시를 따라 페이지는 수집하지 않았고, 그래서 나머지 항목은 측정하지 못했습니다.
               </p>
             </section>
@@ -522,9 +522,16 @@ export default function App() {
 
       <footer>
         <p>
-          공개된 웹페이지만 수집하며, 대상 사이트의 robots.txt를 따릅니다.
-          진단 결과는 참고용이며 법률 자문이 아닙니다.
+          공개된 웹페이지만 봅니다. 사용자가 주소를 입력한 그 순간 <b>그 한 페이지만</b> 가져오는
+          방식이라, ChatGPT-User·Claude-User 와 같은 사용자 요청 조회에 해당합니다.
+          사이트 순회는 하지 않습니다.
         </p>
+        <p>
+          robots.txt 에서 저희를 <code>AIVisibilityCheck</code> 로 지목해 막으시면 즉시 중단합니다.
+          서버가 거부하면 그대로 따르며, 접근을 우회하지 않습니다.
+          대량 사전 조사에서는 <code>User-agent: *</code> 규칙까지 그대로 지킵니다.
+        </p>
+        <p>진단 결과는 참고용이며 법률 자문이 아닙니다.</p>
         <p>원티드 AI Championship 2026 출품작</p>
       </footer>
     </div>

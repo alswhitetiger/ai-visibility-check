@@ -1,7 +1,21 @@
 // 규칙 기반 진단 엔진. LLM을 전혀 쓰지 않는다.
 // 전체 진단 항목의 약 70%가 여기서 판정된다.
 
-const UA = 'AIVisibilityCheck/0.1 (+https://github.com/alswhitetiger/ai-visibility-check)';
+// 우리는 두 가지 방식으로 동작하고, 각각 robots.txt 를 다르게 대한다.
+//
+// 'user'  — 사람이 주소를 입력한 그 순간, 그 한 페이지만 가져온다.
+//           ChatGPT-User / Claude-User 와 같은 user-triggered fetch 범주다.
+//           `User-agent: *` 의 전면 차단은 대량 크롤러를 향한 것으로 보고 진행하되,
+//           우리를 이름으로 지목해 막으면 즉시 멈춘다.
+// 'crawl' — 사전 계산처럼 목록을 훑는 대량 수집. 이건 진짜 크롤링이므로
+//           `*` 차단을 포함해 robots.txt 를 그대로 따른다.
+//
+// 어느 모드든 서버가 403 으로 거부하면 멈춘다. User-Agent 를 위장하지 않는다.
+const UA_USER = 'AIVisibilityCheck-User/0.1 (user-triggered; +https://github.com/alswhitetiger/ai-visibility-check)';
+const UA_CRAWL = 'AIVisibilityCheck/0.1 (+https://github.com/alswhitetiger/ai-visibility-check)';
+
+// robots.txt 에서 우리를 지목할 때 쓸 수 있는 이름들.
+const OUR_AGENTS = ['AIVisibilityCheck-User', 'AIVisibilityCheck'];
 
 // AI 크롤러는 목적이 둘로 나뉜다. 섞어서 세면 진단이 틀린다.
 //
@@ -20,11 +34,11 @@ const TRAINING_CRAWLERS = [
   'Google-Extended', 'CCBot', 'Applebot-Extended', 'meta-externalagent',
 ];
 
-async function get(url, timeoutMs = 10000) {
+async function get(url, ua, timeoutMs = 10000) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: ctl.signal, redirect: 'follow' });
+    const res = await fetch(url, { headers: { 'User-Agent': ua }, signal: ctl.signal, redirect: 'follow' });
     return { ok: res.ok, status: res.status, text: res.ok ? await res.text() : '' };
   } catch {
     return { ok: false, status: 0, text: '' };
@@ -101,7 +115,13 @@ function analyzeRobots(txt) {
     // 이름으로 따로 허용해 준 봇이 있으면, 사이트가 AI 접근을 의식하고 있다는 신호다.
     namedCount: [...answer, ...training].filter(c => c.matchedBy === 'exact').length,
     // 우리 크롤러는 이름이 없으므로 `*` 그룹을 따른다.
-    selfAccess: accessOf(groupFor(groups, UA).group),
+    // 우리를 이름으로 지목한 규칙이 있으면 그것이 최우선이다. 어느 모드든 따른다.
+    namedBlock: OUR_AGENTS.some(a => {
+      const g = groups.find(x => x.agents.some(v => v.toLowerCase() === a.toLowerCase()));
+      return g ? accessOf(g) === 'blocked' : false;
+    }),
+    // 이름 없는 크롤러 전체에 적용되는 `*` 규칙.
+    wildcardAccess: accessOf(groups.find(x => x.agents.includes('*')) || null),
   };
 }
 
@@ -152,23 +172,35 @@ function looksBlocked(html) {
   return CHALLENGE_MARKERS.some(m => html.includes(m));
 }
 
-export async function diagnose(targetUrl) {
+/**
+ * @param {string} targetUrl
+ * @param {{ mode?: 'user' | 'crawl' }} [opts]
+ *   'user'  사람이 그 주소를 입력해서 부른 1회 조회 (기본값)
+ *   'crawl' 목록을 훑는 대량 수집. robots.txt 를 전면 준수한다.
+ */
+export async function diagnose(targetUrl, opts = {}) {
+  const mode = opts.mode === 'crawl' ? 'crawl' : 'user';
+  const ua = mode === 'crawl' ? UA_CRAWL : UA_USER;
+
   const u = new URL(targetUrl);
   const origin = u.origin;
 
-  // robots.txt 를 먼저 본다. 우리를 막고 있으면 페이지를 아예 가져오지 않는다.
-  // 화면에 "robots.txt 를 따릅니다"라고 밝힌 이상 실제로 따라야 한다.
-  const robots = await get(origin + '/robots.txt');
+  const robots = await get(origin + '/robots.txt', ua);
   const rb = robots.ok ? analyzeRobots(robots.text) : null;
 
-  // 우리는 이름 없는 크롤러라 `*` 규칙을 따른다. 여기서 막히면 페이지를 수집하지 않는다.
-  // 다만 robots.txt 만으로도 가장 중요한 질문 — AI 답변 크롤러가 들어올 수 있는가 — 에는
-  // 답할 수 있으므로, 그 부분은 그대로 돌려준다.
-  if (rb && rb.selfAccess === 'blocked') {
+  // 페이지를 가져오지 않는 두 경우.
+  //  1) 우리를 이름으로 지목해 막은 경우 — 모드와 무관하게 따른다.
+  //  2) `*` 전면 차단이면서 대량 수집 모드인 경우 — 그건 크롤링이므로 따른다.
+  // 사용자가 직접 입력한 1회 조회는 `*` 차단만으로 멈추지 않는다.
+  // 그 규칙은 목록을 훑는 크롤러를 향한 것이고, 우리는 그 한 페이지만 읽기 때문이다.
+  const stop = rb && (rb.namedBlock || (mode === 'crawl' && rb.wildcardAccess === 'blocked'));
+
+  if (stop) {
     return {
       url: u.href,
       host: u.host,
       pageSkipped: true,
+      skipReason: rb.namedBlock ? 'named_block' : 'wildcard_block',
       quadrant: 'page_skipped',
       aiScore: null,
       uxScore: null,
@@ -179,10 +211,11 @@ export async function diagnose(targetUrl) {
     };
   }
 
+  // 사용자 요청 조회에서는 요청한 그 페이지만 본다. sitemap 순회 같은 건 하지 않는다.
   const [page, llms, sitemap] = await Promise.all([
-    get(u.href),
-    get(origin + '/llms.txt'),
-    get(origin + '/sitemap.xml'),
+    get(u.href, ua),
+    get(origin + '/llms.txt', ua),
+    get(origin + '/sitemap.xml', ua),
   ]);
 
   if (!page.ok) {

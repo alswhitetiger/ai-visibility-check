@@ -65,7 +65,8 @@ for (const t of targets) {
   process.stdout.write(`scan ${t.host} ... `);
   let r;
   try {
-    r = await diagnose(url);
+    // 목록을 훑는 대량 수집이므로 robots.txt 를 전면 준수한다.
+    r = await diagnose(url, { mode: 'crawl' });
   } catch (e) {
     console.log('오류:', e.message);
     continue;
@@ -157,7 +158,7 @@ const stats = {
     fullyBlocked: answerFullyBlocked,
   },
   namedAiBots: withRobots.filter(r => r.robots.namedCount > 0).length,
-  blocksUnnamedCrawlers: rows.filter(r => r.robots && r.robots.selfAccess === 'blocked').length,
+  blocksUnnamedCrawlers: rows.filter(r => r.robots && r.robots.wildcardAccess === 'blocked').length,
   scanned: scanned.length,
   measured: measured.length,
   pageSkipped: rows.filter(r => r.state === 'page_skipped').length,

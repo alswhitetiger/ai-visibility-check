@@ -127,6 +127,16 @@ async function handleScan(request, env, origin) {
              + '차단 자체가 AI 크롤러에게도 동일하게 적용될 가능성이 큽니다.',
     }, 200, origin);
   }
+  // 서버가 우리를 거부한 경우. 우회하지 않고 그대로 알린다.
+  // 이것 자체가 "이 사이트는 자동 접근을 막는다"는 진단 결과이기도 하다.
+  if (result.error === 'FETCH_FAILED' && [401, 403, 429].includes(result.status)) {
+    return json({
+      error: 'REFUSED_BY_SITE',
+      status: result.status,
+      message: '이 사이트는 자동 접근을 거부했습니다(HTTP ' + result.status + '). '
+             + '저희는 접근을 우회하지 않습니다. 같은 차단이 AI 크롤러에도 적용될 가능성이 큽니다.',
+    }, 200, origin);
+  }
   if (result.error) return json(result, 502, origin);
 
   result.quadrantLabel = QUADRANT_LABEL[result.quadrant];
