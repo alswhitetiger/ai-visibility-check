@@ -105,3 +105,24 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; bac
   .topbar,.intro,.input-panel,.about,.public-list,.site-footer,.actions,.print-button,.recheck,.copy-row { display: none !important; }
   #report { margin: 0; } .fix-card,.score-card { break-inside: avoid; } .score-card strong { font-size: 30px; }
 }
+.observed h2,.shop-builder h2 { font-size: 23px; margin: 0 0 10px; letter-spacing: -.03em; }
+.observed dl { margin: 20px 0; }
+.observed dl > div { display: grid; grid-template-columns: 140px 1fr; gap: 16px; padding: 13px 0; border-top: 1px solid var(--line); }
+.observed dt { font-weight: 650; font-size: 14px; }
+.observed dd { margin: 0; white-space: pre-wrap; font-size: 15px; overflow-wrap: anywhere; }
+.observed-excerpt { padding: 15px; background: #f3f6fb; border-radius: 8px; font-size: 14px; }
+.shop-builder { border-color: #c3d3ef; margin: 30px 0; }
+.shop-builder > p { font-size: 15px; }
+.shop-builder label { display: block; margin: 16px 0; font-size: 15px; font-weight: 650; }
+.shop-builder label > span { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.builder-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.shop-builder input:not([type=checkbox]),.shop-builder textarea,.shop-builder select { display: block; width: 100%; min-width: 0; box-sizing: border-box; font: inherit; font-size: 16px; padding: 11px 12px; margin-top: 7px; color: var(--fg); background: #fbfcfe; border: 1px solid #b8c5d8; border-radius: 7px; }
+.shop-builder textarea { resize: vertical; }
+.shop-builder .confirm-info { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; font-weight: 500; }
+.confirm-info input { width: 18px; height: 18px; flex-shrink: 0; margin: 3px 0 0; accent-color: var(--accent); }
+.builder-result { border-top: 1px solid var(--line); margin-top: 25px; padding-top: 22px; }
+.builder-result p,.apply-steps { font-size: 14px; }
+.apply-steps li { margin: 10px 0; }
+.shop-builder .code-note { color: #895b16; font-size: 14px; }
+@media(max-width: 700px) { .builder-fields { grid-template-columns: 1fr; gap: 0; } .observed dl > div { grid-template-columns: 1fr; gap: 5px; } .shop-builder h2,.observed h2 { font-size: 21px; } }
+@media print { .shop-builder { display: none; } }

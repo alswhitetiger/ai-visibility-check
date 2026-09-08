@@ -1,7 +1,7 @@
 import { parseHTML, DOMParser } from 'linkedom';
 import robotsParser from 'robots-parser';
 
-export const DIAGNOSIS_VERSION = '2026-09-08.3';
+export const DIAGNOSIS_VERSION = '2026-09-08.4';
 
 export function robotsAccess(txt, url, agents) {
   const parser = robotsParser(new URL('/robots.txt', url).href, txt);
@@ -44,9 +44,17 @@ export function readPage(html) {
   const withAlt = imgs.filter(el => el.getAttribute('alt')?.trim()).length;
   const hasProductLd = ld.some(v => typeIs(v, 'Product'));
   const hasPriceLd = ld.filter(v => typeIs(v, 'Product')).some(p => flatten(p.offers).some(o => [o.price, o.lowPrice, o.highPrice].some(validPrice)));
-  return { body, ld, title, desc: meta('description'), imgs, withAlt, hasProductLd, hasPriceLd,
+  const brandValue = ld.find(v => typeIs(v, 'Organization') || typeIs(v, 'LocalBusiness'))?.name || meta('og:site_name');
+  const brand = typeof brandValue === 'string' ? brandValue.trim().slice(0,120) : '';
+  const prices = ld.filter(v => typeIs(v, 'Product')).flatMap(p => flatten(p.offers).flatMap(o =>
+    ['price','lowPrice','highPrice'].filter(k => validPrice(o[k])).map(k => ({ value: String(o[k]).slice(0,40), currency: typeof o.priceCurrency === 'string' ? o.priceCurrency.slice(0,10) : '', source: '상품 데이터 · '+k })))).slice(0,5);
+  const textPrices = [...new Set(body.match(/[0-9][0-9,]{0,15}(?:\.[0-9]+)?\s*원|₩\s*[0-9][0-9,]{0,15}/g) || [])].slice(0,5);
+  const observed = { brand, title: title.slice(0,200), description: meta('description').slice(0,600),
+    prices, textPrices, images: { total: imgs.length, described: withAlt, samples: imgs.map(el => el.getAttribute('alt')?.trim()).filter(Boolean).slice(0,3).map(s=>s.slice(0,160)) },
+    textExcerpt: body.slice(0,350) };
+  return { body, ld, title, desc: meta('description'), imgs, withAlt, hasProductLd, hasPriceLd, observed,
     altRatio: imgs.length ? withAlt / imgs.length : null,
     hasViewport: !!meta('viewport'), hasOg: !!meta('og:title'),
     hasCanonical: [...document.querySelectorAll('link')].some(el => (el.getAttribute('rel') || '').toLowerCase().split(/\s+/).includes('canonical') && !!el.getAttribute('href')),
-    brand: ld.find(v => typeIs(v, 'Organization') || typeIs(v, 'LocalBusiness'))?.name || meta('og:site_name') };
+    brand };
 }

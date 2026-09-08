@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { guides, titleOf, dateOf } from './guides';
 import ResultActions from './ResultActions';
+import { ObservedInfo, ShopBuilder } from './ShopTools';
 import './experience.css';
 
 const API = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
-const VERSION = '2026-09-08.3';
+const VERSION = '2026-09-08.4';
 const STORAGE = 'shop-check:last:';
 const verdicts = {
   healthy: '기본 정보가 대체로 갖춰져 있어요',
@@ -91,10 +92,12 @@ function Report({ data, previous, onScan, onExample }) {
       <div className="score-grid">{[['AI가 읽을 기본 정보', data.aiScore, '접근 규칙 · 브랜드 정보 · 원본 텍스트'], ['고객에게 보여줄 기본 정보', data.uxScore, '페이지 소개 · 모바일 설정 · 이미지 설명']].map(([name,score,hint]) => <section className="score-card" key={name}><p>{name}</p><div><strong>{score ?? '—'}</strong><span>/ 100</span></div><progress value={score ?? 0} max="100" aria-label={name} /><p className="muted">{hint}</p></section>)}</div>
       <p className="measurement-note">점수는 이 페이지의 기본 설정을 점검한 값입니다. 실제 AI 검색 노출·추천 여부나 구매 성공률은 측정하지 않습니다.{unknown > 0 && ` 미확인 ${unknown}개 항목은 점수에서 제외했습니다.`}</p>
       <Comparison data={data} previous={previous} />
+      <ObservedInfo data={data} />
       <section className="next-steps"><div className="section-heading"><div><p className="eyebrow">이제 무엇을 하면 되나요?</p><h2>{fixes.length ? '먼저 이 부분부터 고쳐 보세요' : '확인한 기본 항목을 통과했어요'}</h2></div>{fixes.length > 0 && <span className="muted">보완 {fixes.length}개 중 우선 {Math.min(fixes.length,3)}개</span>}</div>
         {fixes.length ? fixes.slice(0,3).map((c,i) => <FixCard check={c} index={i} key={c.id} />) : <p>실제 휴대폰 화면과 구매 동작도 직접 확인해 보세요. 기본 검사 통과가 모든 기능의 정상 동작을 뜻하지는 않습니다.</p>}
         {!data.example && <div className="recheck"><p><b>사이트를 수정했나요?</b><br/><span className="muted">다시 검사하면 이 브라우저의 이전 결과와 비교합니다. 재검사는 일일 이용 횟수에 포함됩니다.</span></p><button className="button secondary" onClick={() => onScan(data.url, true)}>수정 후 다시 검사</button></div>}
       </section>
+      <ShopBuilder key={data.url + ':' + data.scannedAt} data={data} onScan={onScan} />
       <details className="panel all-checks"><summary>전체 {checks.length}개 점검 항목과 근거 보기</summary><CheckGroup name="AI가 읽을 기본 정보" checks={checks.filter(c => c.axis === 'ai')} /><CheckGroup name="고객에게 보여줄 기본 정보" checks={checks.filter(c => c.axis === 'ux')} /></details>
       {!data.isProductPage && <p className="muted page-hint">지금은 일반 페이지를 검사했습니다. 상품 주소를 입력하면 상품 데이터와 가격도 점검합니다.</p>}
       <AiAnswer ai={data.ai} example={data.example} />

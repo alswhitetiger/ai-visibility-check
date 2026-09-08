@@ -159,7 +159,7 @@ export async function diagnose(targetUrl, opts = {}) {
     return { error: 'BLOCKED_BY_SITE', status: page.status, url: u.href };
   }
 
-  const { body, ld, title, desc, imgs, withAlt, altRatio, hasViewport, hasCanonical, hasOg, hasProductLd, hasPriceLd, brand } = readPage(page.text);
+  const { body, ld, title, desc, imgs, withAlt, altRatio, hasViewport, hasCanonical, hasOg, hasProductLd, hasPriceLd, brand, observed } = readPage(page.text);
   const llmsPass = fileState(llms, 'llms');
   const sitemapPass = fileState(sitemap, 'sitemap');
 
@@ -308,6 +308,7 @@ export async function diagnose(targetUrl, opts = {}) {
     robots: rb,
     isProductPage: looksLikeProductPage,
     version: DIAGNOSIS_VERSION,
+    observed,
     brand: typeof brand === 'string' ? brand.slice(0, 120) : u.hostname,
     checks: applicable.map(({ applies, ...rest }) => ({ ...rest, evidenceUrl: rest.id.startsWith('ai_') ? origin + '/robots.txt' : rest.id === 'llms_txt' ? origin + '/llms.txt' : rest.id === 'sitemap' ? origin + '/sitemap.xml' : u.href })),
     fixes: applicable
