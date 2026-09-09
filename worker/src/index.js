@@ -15,6 +15,7 @@ const json = (data, status, origin) =>
 
 function corsOrigin(request, env) {
   const origin = request.headers.get('Origin') || '';
+  if (/^chrome-extension:\/\/[a-z]{32}$/.test(origin)) return origin;
   const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
   return allowed.includes(origin) ? origin : allowed[0] || '*';
 }
@@ -92,6 +93,18 @@ function normalize(input) {
   } catch {
     return null;
   }
+}
+
+function extensionResult(input) {
+  const images = Array.isArray(input?.images) ? input.images.slice(0, 100) : [];
+  const title = typeof input?.title === 'string' ? input.title.trim() : '';
+  const description = typeof input?.description === 'string' ? input.description.trim() : '';
+  const headings = Array.isArray(input?.headings) ? input.headings.filter(x => typeof x === 'string' && x.trim()) : [];
+  const prices = Array.isArray(input?.prices) ? input.prices : [];
+  const described = images.filter(x => typeof x?.alt === 'string' && x.alt.trim()).length;
+  const aiScore = Math.round((title ? 30 : 0) + (description.length >= 40 ? 30 : description ? 15 : 0) + (headings.length ? 20 : 0) + (input?.url ? 20 : 0));
+  const uxScore = Math.round((title ? 20 : 0) + (images.length ? (described / images.length) * 40 : 0) + (prices.length ? 25 : 0) + (description ? 15 : 0));
+  return { url: input?.url || '', host: input?.url ? new URL(input.url).host : '', version: DIAGNOSIS_VERSION, browserExtracted: true, aiScore, uxScore, observed: { title, description, headings, images: { total: images.length, described }, prices }, scannedAt: Date.now(), checks: [] };
 }
 
 async function handleScan(request, env, origin) {
@@ -287,7 +300,8 @@ export default {
     try {
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         const expected = env.AUTH_BASE_URL || new URL(request.url).origin;
-        if (request.headers.get('Origin') !== expected) return json({ message: '허용되지 않은 요청입니다.' }, 403, origin);
+        const extensionRequest = pathname === '/api/extension/scan' && /^chrome-extension:\/\/[a-z]{32}$/.test(request.headers.get('Origin') || '');
+        if (!extensionRequest && request.headers.get('Origin') !== expected) return json({ message: '허용되지 않은 요청입니다.' }, 403, origin);
       }
       if (pathname.startsWith('/api/auth/')) {
         if (!env.AUTH_SECRET) return json({ message: '로그인 설정을 준비 중입니다.' }, 503, origin);
@@ -302,6 +316,11 @@ export default {
       }
       if (pathname === '/api/health') {
         return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now() }, 200, origin);
+      }
+      if (pathname === '/api/extension/scan' && request.method === 'POST') {
+        const body = await request.json().catch(() => null);
+        if (!body?.url || !publicUrl(body.url)) return json({ error: 'INVALID_URL', message: '현재 탭 주소를 읽지 못했습니다.' }, 400, origin);
+        return json(extensionResult(body), 200, origin);
       }
       if (pathname === '/api/share') {
         const result = await readSharedReport(env, new URL(request.url).searchParams.get('token'));
@@ -335,3 +354,4 @@ export default {
     }
   },
 };
+

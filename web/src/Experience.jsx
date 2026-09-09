@@ -223,3 +223,4 @@ export default function Experience() {
     <footer className="site-footer"><span>가게 체크 · AI Visibility Check</span><a href="https://github.com/alswhitetiger/ai-visibility-check" onClick={e=>{e.preventDefault();openReference("project");}}>프로젝트와 검사 기준 ↗</a><p>원티드 AI Championship 2026 출품작 · 결과는 기본 정보 점검을 위한 참고 자료입니다.</p><button className="text-button" onClick={()=>openReference("research")}>이전 조사 자료 ↗</button></footer>
   </div>;
 }
+

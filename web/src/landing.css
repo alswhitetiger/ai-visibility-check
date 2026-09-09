@@ -51,3 +51,4 @@ body { background: #fafbf7; }
 .platform-guide a { color: #365c4c; font-size: 14px; }
 @media print { .platform-guide { display: none; } }
 .guide-steps article > span { flex: 0 0 22px; white-space: nowrap; }
+
