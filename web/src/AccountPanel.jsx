@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { memberApi, sameOrigin, loginUrl } from './member-api';
+import { HistorySparkline, Onboarding, ScoreSummary } from './MemberDashboard';
 import './account.css';
 
 const providers = { google: 'Google · Gmail', kakao: '카카오', naver: '네이버' };
@@ -34,6 +35,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
         window.history.replaceState({}, '', location.pathname + '#account'); setMode('login'); setMessage('비밀번호를 변경했어요. 다시 로그인해 주세요.'); return;
       }
       await memberApi(mode === 'signup' ? '/api/auth/sign-up/email' : '/api/auth/sign-in/email', { email: fields.email, password: fields.password, ...(mode === 'signup' ? { name: fields.name } : {}), callbackURL });
+      if (mode === 'signup') sessionStorage.setItem('shop-check:onboarding', '1');
       if (mode === 'signup' && config.emailVerification) setMessage('이메일에 보낸 확인 링크를 눌러 가입을 완료해 주세요.');
       await onRefresh();
     });
@@ -64,7 +66,9 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
       {config.emailVerification ? <button className="text-button" onClick={() => setMode('reset')}>비밀번호를 잊었나요?</button> : <p className="muted">이메일·비밀번호로 가입할 수 있습니다. 이메일 인증·비밀번호 찾기는 메일 서비스 연결 후 제공됩니다.</p>}
       <div className="social-logins">{Object.entries(providers).map(([p,label]) => <button key={p} className={'button secondary social-'+p} disabled={busy || !config.providers[p]} onClick={() => social(p)}>{label}로 시작하기{!config.providers[p] && ' · 연결 준비 중'}</button>)}</div>
     </> : <>
-      <div className="account-usage"><b>오늘 {usage?.used ?? 0} / {usage?.limit ?? 20}회 사용</b><span>남은 검사 {usage?.remaining ?? '—'}회 · 한국 시간 자정 초기화</span><p>새 검사와 재검사만 차감합니다. 실패한 검사·저장된 결과 조회는 차감하지 않습니다.</p></div>
+      <section className="dashboard-hero"><div><p className="eyebrow">내 대시보드</p><h2>오늘의 개선 상황</h2><p className="muted">사이트를 등록하고 검사 결과의 변화를 이어서 확인하세요.</p></div><div className="dashboard-quota"><strong>{usage?.remaining ?? '—'}</strong><span>오늘 남은 검사</span><small>{usage?.used ?? 0} / {usage?.limit ?? 20}회 사용</small></div></section>
+      <ScoreSummary history={history}/><HistorySparkline history={history}/>
+      <div className="account-usage"><b>검사 이용량</b><span>한국 시간 자정에 초기화됩니다.</span><p>새 검사와 재검사만 차감합니다. 실패한 검사·저장된 결과 조회는 차감하지 않습니다.</p></div>
       <div className="member-grid"><section><h3>내 사이트 <small>{sites.length} / 50</small></h3><form className="account-form" onSubmit={e => { e.preventDefault(); act(async () => { await memberApi('/api/member/sites', { url: siteUrl, label: siteLabel }); setSiteUrl(''); setSiteLabel(''); await onRefresh(); }); }}><label>사이트 이름<input value={siteLabel} onChange={e=>setSiteLabel(e.target.value)} maxLength={80} placeholder="예: 우리 가게" /></label><label>사이트 주소<input value={siteUrl} onChange={e=>setSiteUrl(e.target.value)} required maxLength={2048} placeholder="https://myshop.com" /></label><button className="button secondary" disabled={busy}>내 사이트에 저장</button></form>
         {!sites.length && <p className="muted">자주 검사하는 주소를 저장해 보세요.</p>}
         <ul className="member-list">{sites.map(s => <li key={s.id}><b>{s.label}</b><span className="muted">{s.url}</span><div><button className="text-button" disabled={busy} onClick={() => onScan(s.url)}>검사하기</button><button className="text-button" disabled={busy} onClick={() => act(async () => { await memberApi('/api/member/sites?id='+encodeURIComponent(s.id), null, 'DELETE'); await onRefresh(); })}>목록에서 삭제</button></div></li>)}</ul>
