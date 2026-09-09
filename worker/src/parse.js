@@ -1,7 +1,7 @@
 import { parseHTML, DOMParser } from 'linkedom';
 import robotsParser from 'robots-parser';
 
-export const DIAGNOSIS_VERSION = '2026-09-08.4';
+export const DIAGNOSIS_VERSION = '2026-09-09.1';
 
 export function robotsAccess(txt, url, agents) {
   const parser = robotsParser(new URL('/robots.txt', url).href, txt);

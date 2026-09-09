@@ -152,6 +152,7 @@ async function handleScan(request, env, origin) {
              + '다른 AI 서비스의 접근 여부는 이 결과만으로 알 수 없습니다.',
     }, 200, origin);
   }
+  if (result.error === 'LOGIN_WALL') return json(result, 200, origin);
   if (result.error) return json(result, 502, origin);
 
   result.quadrantLabel = QUADRANT_LABEL[result.quadrant];

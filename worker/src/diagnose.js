@@ -54,7 +54,7 @@ async function get(url, ua, timeoutMs = 10000) {
       signal: ctl.signal,
       redirect: 'follow',
     });
-    return { ok: res.ok, status: res.status, text: res.ok ? await res.text() : '' };
+    return { ok: res.ok, status: res.status, finalUrl: res.url, text: res.ok ? await res.text() : '' };
   } catch {
     return { ok: false, status: 0, text: '' };
   } finally {
@@ -160,6 +160,10 @@ export async function diagnose(targetUrl, opts = {}) {
   }
 
   const { body, ld, title, desc, imgs, withAlt, altRatio, hasViewport, hasCanonical, hasOg, hasProductLd, hasPriceLd, brand, observed } = readPage(page.text);
+  // Explicit gates are not the requested public page. A navigation login link alone is not a gate.
+  const restricted = /회원전용\s*쇼핑몰|성인인증\s*및\s*로그인이\s*필요|로그인\s*후에만\s*(이용|접근)|로그인이\s*필요한\s*페이지/.test(body);
+  const loginPage = /\/(?:member\/login|account\/login|login)(?:[/.?]|$)/i.test(page.finalUrl || u.href) && /type\s*=\s*["']password["']/i.test(page.text);
+  if (restricted || loginPage) return { error: 'LOGIN_WALL', url: u.href, status: page.status, message: '로그인 또는 성인인증 안내 화면이 감지되어 점수를 산정하지 않았습니다.' };
   const llmsPass = fileState(llms, 'llms');
   const sitemapPass = fileState(sitemap, 'sitemap');
 

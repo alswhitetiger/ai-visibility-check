@@ -103,7 +103,7 @@
       "wildcardAccess": "allowed"
     },
     "isProductPage": false,
-    "version": "2026-09-08.4",
+    "version": "2026-09-09.1",
     "observed": {
       "brand": "",
       "title": "예시 가게 | 편안한 일상 의류 쇼핑몰",
@@ -362,7 +362,7 @@
       "wildcardAccess": "allowed"
     },
     "isProductPage": false,
-    "version": "2026-09-08.4",
+    "version": "2026-09-09.1",
     "observed": {
       "brand": "예시 가게",
       "title": "예시 가게 | 편안한 일상 의류 쇼핑몰",

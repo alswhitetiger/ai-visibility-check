@@ -101,3 +101,17 @@ test('old version cache is recomputed, current version reused, refresh recompute
   const refreshed=await (await worker.fetch(new Request(request().url+'&refresh=1'),env)).json();
   assert.notEqual(refreshed.aiScore,99); assert.ok(calls.length>count);
 });
+
+test('member-only and age-verification gates are not scored', async t => {
+  network(t, { html: page('', '') .replace('상품 안내입니다.', '회원전용 쇼핑몰은 로그인 후 상품 구매가 가능합니다.') });
+  const d = await diagnose('https://shop.example/');
+  assert.equal(d.error, 'LOGIN_WALL'); assert.equal(d.aiScore, undefined);
+});
+test('age gate covering product HTML is not scored', async t => {
+  network(t, { html: page().replace('<body>', '<body><section>성인인증 및 로그인이 필요합니다</section>') });
+  assert.equal((await diagnose('https://shop.example/')).error, 'LOGIN_WALL');
+});
+test('ordinary login navigation does not block public content', async t => {
+  network(t, { html: page().replace('<body>', '<body><a href="/member/login.html">로그인</a>') });
+  assert.equal((await diagnose('https://shop.example/')).error, undefined);
+});
