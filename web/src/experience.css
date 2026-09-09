@@ -126,3 +126,40 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; bac
 .shop-builder .code-note { color: #895b16; font-size: 14px; }
 @media(max-width: 700px) { .builder-fields { grid-template-columns: 1fr; gap: 0; } .observed dl > div { grid-template-columns: 1fr; gap: 5px; } .shop-builder h2,.observed h2 { font-size: 21px; } }
 @media print { .shop-builder { display: none; } }
+
+/* Editorial visual refresh: warmer canvas, clearer hierarchy, and a stronger scan action. */
+:root { --bg: #f7f5ef; --fg: #1c2d32; --muted: #687474; --line: #e2e1da; --card: #fffefa; --accent: #e5684f; --ok: #26735c; --warn: #a86b2a; }
+body { background: var(--bg); color: var(--fg); }
+.app-shell { max-width: 1120px; }
+.topbar { min-height: 78px; border-bottom-color: #e7e4db; }
+.topbar a { color: #536062; font-weight: 600; }
+.topbar a:not(.brand) { padding: 9px 12px; border-radius: 999px; }
+.topbar a:not(.brand):hover { background: #ebe9e1; color: var(--fg); }
+.topbar .brand { color: var(--fg); font-size: 20px; }
+.brand-mark { background: var(--accent); box-shadow: 0 5px 12px #e5684f35; }
+.intro { position: relative; display: grid; grid-template-columns: minmax(0,1.2fr) minmax(250px,.8fr); gap: 38px; padding: 76px 0 42px; }
+.intro::after { content: 'AI가 읽는 가게\A\A  ✓  이름과 설명\A  ✓  접근 가능한 페이지\A  ·  다음에 고칠 한 가지'; white-space: pre; align-self: center; justify-self: end; width: 250px; padding: 25px 24px; border: 1px solid #dfe4dc; border-radius: 20px; background: linear-gradient(145deg,#fffefa,#eef4e9); color: #345052; box-shadow: 0 18px 35px #253d3220; font-size: 14px; line-height: 1.75; }
+.intro h1 { font-size: clamp(34px, 5vw, 58px); line-height: 1.25; letter-spacing: -.06em; }
+.intro h1 span { color: var(--accent); }
+.intro-copy { color: #617071; font-size: 17px; }
+.eyebrow { color: #c9553e; letter-spacing: .04em; }
+.input-panel { background: #1c3438; border: 0; border-radius: 20px; padding: 27px 30px 21px; box-shadow: 0 18px 40px #172e3226; }
+.input-panel label { color: #f8f8f1; }
+.input-row input { border-color: #496268; background: #fdfcf8; }
+.input-row .primary { background: var(--accent); box-shadow: 0 6px 14px #0d17191f; }
+.input-row .primary:hover { background: #d95740; }
+.input-bottom { color: #c5d0cb; }
+.input-bottom .text-button { color: #ffd0c4; }
+.overview { gap: 15px; padding: 34px 0 60px; }
+.overview article { border: 1px solid var(--line); border-left: 0; border-radius: 15px; padding: 22px; background: var(--card); box-shadow: 0 8px 20px #35433d0c; }
+.overview article > span { color: var(--accent); }
+.overview h2 { color: var(--fg); }
+.score-card,.fix-card,.panel { box-shadow: 0 8px 22px #35433d0b; }
+.score-card { border-radius: 16px; background: var(--card); }
+.score-card progress::-webkit-progress-value { background: var(--accent); }
+.score-card progress::-moz-progress-bar { background: var(--accent); }
+.report-badge { background: #f9e8e2; color: #a44432; border-color: #f0c9bd; border-radius: 999px; }
+.about,.public-list,.site-footer { border-top-color: var(--line); }
+.about h2 { color: var(--fg); }
+@media (max-width: 700px) { .intro { display: block; padding: 48px 0 28px; } .intro::after { display: none; } .intro h1 { font-size: clamp(32px, 10vw, 46px); } .input-panel { padding: 22px; } }
+
