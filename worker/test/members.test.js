@@ -136,3 +136,24 @@ test('sharing requires owned history, preserves server result and expires withou
   sqlite.prepare('UPDATE shared_reports SET expires_at = ?').run(Date.now() - 1);
   assert.equal((await request('/api/share?token=' + token)).status, 404);
 });
+
+test('checklists persist per account and URL, isolate writes and validate input', async t => {
+  const { env, request, signup } = setup(t);
+  const a = await signup('checks-a@example.test'), b = await signup('checks-b@example.test');
+  const url = 'https://shop.example/';
+  assert.equal((await request('/api/member/checklist?url=' + encodeURIComponent(url))).status, 401);
+  await saveHistory(env, a.data.user.id, { url, scannedAt: 123 });
+  const write = body => request('/api/member/checklist', { ...a, body: { url, ...body } });
+  assert.equal((await write({ id: 'description', done: 'yes' })).status, 400);
+  assert.equal((await request('/api/member/checklist', { ...b, body: { url, id: 'description', done: true } })).status, 403);
+  assert.equal((await request('/api/member/checklist', { ...a, origin: 'https://evil.example', body: { url, id: 'description', done: true } })).status, 403);
+  assert.equal((await write({ id: 'description', done: true })).status, 200);
+  await write({ id: 'img_alt', done: true });
+  const read = opts => request('/api/member/checklist?url=' + encodeURIComponent(url), opts).then(r => r.json());
+  assert.deepEqual((await read(a)).items, { description: true, img_alt: true });
+  assert.deepEqual((await read(b)).items, {});
+  await write({ id: 'description', done: false });
+  assert.deepEqual((await read(a)).items, { description: false, img_alt: true });
+  assert.deepEqual((await (await request('/api/member/checklist?url=https%3A%2F%2Fother.example%2F', a)).json()).items, {});
+  assert.equal((await quota(env, a.data.user.id)).used, 0);
+});

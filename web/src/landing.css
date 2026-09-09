@@ -38,3 +38,9 @@ body { background: #fafbf7; }
 @media(max-width:1000px) { .landing-hero { gap: 30px; }.hero-message h1 { font-size: 48px; }.preview-stage { padding: 17px; }.preview-report { padding: 18px; } }
 @media(max-width:700px) { .app-shell { padding: 0 20px; }.topbar { min-height: 72px; gap: 10px; }.topbar .brand { font-size: 17px; }.nav-links { gap: 0; }.nav-links a:first-child { display: none; }.topbar a:not(.brand) { font-size: 11px; padding: 8px; }.landing-hero { grid-template-columns: 1fr; padding: 37px 0 32px; gap: 32px; }.hero-message h1 { font-size: clamp(38px,10.5vw,56px); }.hero-description { font-size: 15px; }.hero-kicker { font-size: 11px; margin-bottom: 20px; }.hero-search .button { padding: 12px; font-size: 12px; }.hero-search input { font-size: 14px; }.preview-stage { padding: 21px; }.preview-report { padding: 22px; }.overview { gap: 20px; padding-bottom: 32px; }.overview article + article { padding-left: 0; border: 0; }.public-guide { grid-template-columns: 1fr; gap: 30px; padding: 38px 0; }.guide-heading h2 { font-size: 28px; }.preview-caption { font-size: 8px; }.about h2 { font-size: 24px; } }
 @media print { .landing-hero,.public-guide,.overview { display: none !important; } }
+.platform-guide { margin: 30px 0; background: #f4f7f0; }
+.platform-guide label { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 14px; margin-top: 20px; }
+.platform-guide select { padding: 10px 12px; border: 1px solid #b9c8ba; border-radius: 8px; background: white; color: var(--fg); font: inherit; max-width: 100%; }
+.platform-guide li { margin: 13px 0; font-size: 14px; line-height: 1.8; }
+.platform-guide a { color: #365c4c; font-size: 14px; }
+@media print { .platform-guide { display: none; } }

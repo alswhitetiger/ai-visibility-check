@@ -1,3 +1,12 @@
+const improvementTables = new WeakMap();
+async function ensureImprovements(env) {
+  if (!improvementTables.has(env.DB)) improvementTables.set(env.DB, env.DB.prepare(`CREATE TABLE IF NOT EXISTS improvement_checks (
+ user_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+ url TEXT NOT NULL, check_id TEXT NOT NULL, done INTEGER NOT NULL CHECK(done IN (0,1)),
+ updated_at INTEGER NOT NULL, PRIMARY KEY(user_id,url,check_id)
+);`).run().catch(e => { improvementTables.delete(env.DB); throw e; }));
+  await improvementTables.get(env.DB);
+}
 export const dayKey = (now = Date.now()) => new Date(now + 9 * 3600000).toISOString().slice(0, 10);
 export const resetAt = (now = Date.now()) => new Date(Date.parse(dayKey(now) + 'T00:00:00+09:00') + 86400000).toISOString();
 const limitOf = env => Math.max(1, Number(env.ACCOUNT_DAILY_LIMIT) || 20);
@@ -70,6 +79,23 @@ export async function readSharedReport(env, token) {
 
 export async function memberRoute(request, env, user, json, origin) {
   const u = new URL(request.url), path = u.pathname;
+  if (path === '/api/member/checklist') {
+    if (!['GET', 'POST'].includes(request.method)) return json({ message: '지원하지 않는 요청입니다.' }, 405, origin);
+    const body = request.method === 'POST' ? await request.json().catch(() => null) : null;
+    const url = publicUrl(request.method === 'GET' ? u.searchParams.get('url') || '' : body?.url || '');
+    if (!url) return json({ message: '사이트 주소를 확인해 주세요.' }, 400, origin);
+    await ensureImprovements(env);
+    if (request.method === 'POST') {
+      if (!/^[a-z_]{1,40}$/.test(body?.id || '') || typeof body?.done !== 'boolean') return json({ message: '체크 항목이 올바르지 않습니다.' }, 400, origin);
+      const owned = await env.DB.prepare('SELECT id FROM scan_history WHERE user_id = ? AND url = ? LIMIT 1').bind(user.id, url).first();
+      if (!owned) return json({ message: '본인 계정으로 검사한 사이트에서 저장할 수 있어요.' }, 403, origin);
+      await env.DB.prepare(`INSERT INTO improvement_checks (user_id,url,check_id,done,updated_at) VALUES (?,?,?,?,?)
+        ON CONFLICT(user_id,url,check_id) DO UPDATE SET done=excluded.done,updated_at=excluded.updated_at`)
+        .bind(user.id,url,body.id,body.done ? 1 : 0,Date.now()).run();
+    }
+    const { results } = await env.DB.prepare('SELECT check_id,done FROM improvement_checks WHERE user_id = ? AND url = ?').bind(user.id,url).all();
+    return json({ items: Object.fromEntries(results.map(r => [r.check_id, !!r.done])) }, 200, origin);
+  }
   if (path === '/api/member/sites') {
     if (request.method === 'GET') {
       const { results } = await env.DB.prepare('SELECT id, url, label, created_at FROM user_sites WHERE user_id = ? ORDER BY created_at DESC').bind(user.id).all();
