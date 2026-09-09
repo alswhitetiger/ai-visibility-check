@@ -143,16 +143,12 @@ export default function Experience() {
   useEffect(() => { refreshMember().catch(() => {}); }, []);
   const [url, setUrl] = useState('');
   const [state, setState] = useState({ status: 'idle' });
-  const [showcase, setShowcase] = useState([]);
   const active = useRef(null);
   const serial = useRef(0);
   const latest = useRef(null);
   const dataUrl = name => `${import.meta.env.BASE_URL}data/${name}.json?v=${__BUILD_ID__}`;
   useEffect(() => {
     let alive = true;
-    const staticList = getJson(dataUrl('showcase')).catch(() => ({ items: [] }));
-    const liveList = API ? getJson(API+'/api/showcase').catch(() => ({ items: [] })) : Promise.resolve({ items: [] });
-    Promise.all([staticList,liveList]).then(lists => { if (alive) setShowcase([...new Map(lists.flatMap(l => l.items || []).map(x => [x.host,x])).values()]); });
     const params = new URLSearchParams(location.search);
     const shared = params.get('url'), shareToken = params.get('share'), action = params.get('action');
     if (shareToken) {
@@ -229,7 +225,6 @@ export default function Experience() {
     {state.status === 'idle' && <section className="overview"><article><span>01</span><h2>AI가 읽을 정보</h2><p>AI 접근 규칙, 브랜드 소개 등<br/>기계가 읽을 기본 정보를 확인해요.</p></article><article><span>02</span><h2>고객이 볼 정보</h2><p>페이지 설명, 모바일 설정 등<br/>고객 안내에 필요한 항목을 확인해요.</p></article><article><span>03</span><h2>고치는 방법</h2><p>보완할 항목과 수정 안내를 보고<br/>다시 검사해 변화를 확인해요.</p></article></section>}
     <PublicGuide example={example} />
     <section id="how-it-works" className="about"><p className="eyebrow">검사 결과, 이렇게 읽어 주세요</p><h2>점수보다 중요한 건<br/>빠진 정보를 채우는 일이에요.</h2><div className="faq"><details><summary>이 점수가 높으면 AI가 우리 가게를 추천하나요?</summary><p>추천을 보장하지 않습니다. 점수는 입력한 페이지의 HTML과 접근 규칙 등 기본 준비 상태를 나타냅니다. 실제 검색 노출·매출·결제 성공 여부는 측정하지 않습니다.</p></details><details><summary>무엇을 가져와서 검사하나요?</summary><p>입력한 페이지와 사이트의 robots.txt, llms.txt, sitemap.xml을 조회합니다. 상품 목록을 자동으로 순회하지 않습니다. 사용자 요청 검사에서는 저희 도구를 명시적으로 차단한 규칙을 따르며, 대량 조사에서는 일반 크롤러 차단 규칙도 따릅니다.</p></details><details><summary>개발을 몰라도 고칠 수 있나요?</summary><p>브랜드 소개나 이미지 설명은 쇼핑몰 관리자에서 수정할 수 있는 경우가 많습니다. 코드 설정이 필요한 항목은 안내와 예시를 운영·개발 담당자에게 전달하세요. 자동으로 사이트를 수정하지는 않습니다.</p></details><details><summary>점수는 어떻게 계산하나요?</summary><p>항목별 가중치를 합산해 100점으로 환산합니다. 배점과 근거는 전체 점검 항목에서 확인할 수 있습니다. 미확인 항목은 제외하고, 상품 데이터·가격은 상품 페이지에서만 검사합니다. llms.txt와 학습용 AI 설정은 참고 항목입니다. 외부에서 인증된 평가 척도는 아닙니다.</p></details><details><summary>이전 검사 기록은 어디에 저장되나요?</summary><p>서버는 페이지 검사를 최대 24시간 재사용합니다. 전후 비교에는 이 브라우저에 저장된 마지막 실제 검사 항목을 사용합니다. 회원의 검사 이력은 계정에 저장되어 다른 기기에서도 최근 90일의 결과를 열 수 있습니다. 위 자동 비교는 이 브라우저의 직전 결과를 기준으로 합니다. 사이트 변경이 없을 때는 저장된 결과를 이용하면 호출을 줄일 수 있습니다.</p></details></div></section>
-    {showcase.length > 0 && <section className="public-list"><h2>운영자가 공개에 동의한 가게</h2><p className="muted">원하는 가게를 선택하면 현재 기준으로 검사합니다. 점수 순위가 아닙니다.</p><div className="chips">{showcase.map(s => <button className="button secondary" key={s.host} onClick={() => { setUrl(s.host); scan(s.host); }}>{s.label || s.host} ↗</button>)}</div></section>}
     <footer className="site-footer"><span>가게 체크 · AI Visibility Check</span><a href="https://github.com/alswhitetiger/ai-visibility-check" onClick={e=>{e.preventDefault();openReference("project");}}>프로젝트와 검사 기준 ↗</a><p>원티드 AI Championship 2026 출품작 · 결과는 기본 정보 점검을 위한 참고 자료입니다.</p><button className="text-button" onClick={()=>openReference("research")}>이전 조사 자료 ↗</button></footer>
   </div>;
 }
