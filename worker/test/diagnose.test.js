@@ -103,15 +103,22 @@ test('old version cache is recomputed, current version reused, refresh recompute
 });
 
 test('member-only and age-verification gates are not scored', async t => {
-  network(t, { html: page('', '') .replace('상품 안내입니다.', '회원전용 쇼핑몰은 로그인 후 상품 구매가 가능합니다.') });
+  network(t, { html: '<html><head><title>로그인</title></head><body>회원전용 쇼핑몰은 로그인 후 상품 구매가 가능합니다.</body></html>' });
   const d = await diagnose('https://shop.example/');
   assert.equal(d.error, 'LOGIN_WALL'); assert.equal(d.aiScore, undefined);
 });
 test('age gate covering product HTML is not scored', async t => {
-  network(t, { html: page().replace('<body>', '<body><section>성인인증 및 로그인이 필요합니다</section>') });
+  network(t, { html: '<html><head><title>성인인증</title></head><body>성인인증 및 로그인이 필요합니다</body></html>' });
   assert.equal((await diagnose('https://shop.example/')).error, 'LOGIN_WALL');
 });
 test('ordinary login navigation does not block public content', async t => {
   network(t, { html: page().replace('<body>', '<body><a href="/member/login.html">로그인</a>') });
   assert.equal((await diagnose('https://shop.example/')).error, undefined);
+});
+
+test('public content with a login or age gate continues to score', async t => {
+  const html = page().replace('<body>', '<body><section>성인인증 및 로그인이 필요합니다</section><main>' + ('상품 가격과 쇼핑 안내입니다. '.repeat(80)) + '</main>');
+  network(t, { html });
+  const d = await diagnose('https://shop.example/');
+  assert.equal(d.error, undefined);
 });
