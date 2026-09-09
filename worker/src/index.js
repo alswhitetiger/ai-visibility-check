@@ -1,7 +1,7 @@
 import { diagnose, QUADRANT_LABEL, DIAGNOSIS_VERSION } from './diagnose.js';
 import { askAI, brandProbePrompt } from './ai.js';
 import { createAuth, sessionOf, providerStatus } from './auth.js';
-import { quota, reserveScan, releaseScan, saveHistory, memberRoute, publicUrl } from './members.js';
+import { quota, reserveScan, releaseScan, saveHistory, memberRoute, publicUrl, readSharedReport } from './members.js';
 
 const json = (data, status, origin) =>
   new Response(JSON.stringify(data), {
@@ -301,6 +301,10 @@ export default {
       }
       if (pathname === '/api/health') {
         return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now() }, 200, origin);
+      }
+      if (pathname === '/api/share') {
+        const result = await readSharedReport(env, new URL(request.url).searchParams.get('token'));
+        return result ? json(result, 200, origin) : json({ message: '공유 결과를 찾지 못했거나 만료되었습니다.' }, 404, origin);
       }
       if (pathname === '/api/scan') {
         return await handleScan(request, env, origin);

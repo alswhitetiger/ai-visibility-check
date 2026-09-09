@@ -1,19 +1,29 @@
 import { useState } from 'react';
+import { memberApi, sameOrigin } from './member-api';
 export default function ResultActions({ data, apiBase }) {
   const [copied, setCopied] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+  const [shareBusy, setShareBusy] = useState(false), [shareMessage, setShareMessage] = useState('');
   const [optin, setOptin] = useState(null); // null | {token, howto} | {status}
   const [busy, setBusy] = useState(false);
 
-  const shareUrl = `${location.origin}${location.pathname}?url=${encodeURIComponent(data.url || data.host)}`;
-
   async function copyShare() {
+    if (!sameOrigin) { setShareMessage('로그인 후 공유 링크를 만들 수 있어요.'); return; }
+    setShareBusy(true); setShareMessage('');
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      let shareUrl = shareLink;
+      if (!shareUrl) {
+        const created = await memberApi('/api/member/share', { result: { url: data.url, scannedAt: data.scannedAt } });
+        shareUrl = `${location.origin}${location.pathname}?share=${encodeURIComponent(created.token)}`;
+        setShareLink(shareUrl);
+      }
+      try { await navigator.clipboard.writeText(shareUrl); }
+      catch { setShareMessage('링크가 생성됐습니다. 아래 주소를 선택해 복사해 주세요.'); return; }
       setCopied(true);
+      setShareMessage('30일 동안 열 수 있는 읽기 전용 링크를 복사했습니다.');
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
+    } catch (e) { setCopied(false); setShareMessage(e.message); }
+    finally { setShareBusy(false); }
   }
 
   async function startOptin() {
@@ -43,8 +53,8 @@ export default function ResultActions({ data, apiBase }) {
   return (
     <section className="actions">
       <div className="action-row">
-        <button className="btn" onClick={copyShare}>
-          {copied ? '복사했습니다' : '결과 링크 복사'}
+        <button className="btn" onClick={copyShare} disabled={shareBusy}>
+          {shareBusy ? '링크 만드는 중…' : copied ? '복사했습니다' : '공유 링크 만들기'}
         </button>
         {apiBase && !optin && (
           <button className="btn ghost" onClick={startOptin} disabled={busy}>
@@ -52,6 +62,8 @@ export default function ResultActions({ data, apiBase }) {
           </button>
         )}
       </div>
+      {shareLink && <p><label>공유 주소 <input aria-label="공유 주소" readOnly value={shareLink} onFocus={e => e.target.select()} style={{ width: '100%' }} /></label></p>}
+      {shareMessage && <p className="hint" role="status">{shareMessage}</p>}
 
       {optin && optin.ok && (
         <p className="notice">

@@ -1,6 +1,14 @@
 export const dayKey = (now = Date.now()) => new Date(now + 9 * 3600000).toISOString().slice(0, 10);
 export const resetAt = (now = Date.now()) => new Date(Date.parse(dayKey(now) + 'T00:00:00+09:00') + 86400000).toISOString();
 const limitOf = env => Math.max(1, Number(env.ACCOUNT_DAILY_LIMIT) || 20);
+const sharedReportsTables = new WeakMap();
+async function ensureSharedReportsTable(env) {
+  if (!sharedReportsTables.has(env.DB)) sharedReportsTables.set(env.DB, env.DB.prepare(`CREATE TABLE IF NOT EXISTS shared_reports (
+    token TEXT PRIMARY KEY, user_id TEXT REFERENCES user(id) ON DELETE CASCADE,
+    result_json TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
+  )`).run().catch(error => { sharedReportsTables.delete(env.DB); throw error; }));
+  await sharedReportsTables.get(env.DB);
+}
 export function publicUrl(input) {
   try {
     const u = new URL(/^https?:\/\//i.test(input.trim()) ? input.trim() : 'https://' + input.trim());
@@ -34,6 +42,30 @@ export async function saveHistory(env, userId, data, reservation) {
   if (reservation) statements.push(env.DB.prepare("UPDATE scan_requests SET status = 'done' WHERE id = ? AND user_id = ?").bind(reservation, userId));
   statements.push(env.DB.prepare('DELETE FROM scan_history WHERE user_id = ? AND created_at < ?').bind(userId, now - 90 * 86400000));
   await env.DB.batch(statements);
+}
+
+export async function createSharedReport(env, userId, result) {
+  const token = crypto.randomUUID() + crypto.randomUUID().replaceAll('-', '');
+  const now = Date.now();
+  if (!result || typeof result.url !== 'string' || !result.scannedAt) return null;
+  const saved = await env.DB.prepare("SELECT result_json FROM scan_history WHERE user_id = ? AND url = ? AND json_extract(result_json, '$.scannedAt') = ? AND created_at >= ? LIMIT 1")
+    .bind(userId, result.url, result.scannedAt, now - 90 * 86400000).first();
+  if (!saved) return null;
+  const payload = saved.result_json;
+  if (payload.length > 300000) return null;
+  await ensureSharedReportsTable(env);
+  await env.DB.prepare('DELETE FROM shared_reports WHERE expires_at <= ?').bind(now).run();
+  await env.DB.prepare('INSERT INTO shared_reports (token, user_id, result_json, created_at, expires_at) VALUES (?, ?, ?, ?, ?)')
+    .bind(token, userId, payload, now, now + 30 * 86400000).run();
+  return token;
+}
+
+export async function readSharedReport(env, token) {
+  if (!token || token.length > 100) return null;
+  await ensureSharedReportsTable(env);
+  const row = await env.DB.prepare('SELECT result_json, created_at, expires_at FROM shared_reports WHERE token = ? AND expires_at > ?').bind(token, Date.now()).first();
+  if (!row) return null;
+  try { return { ...JSON.parse(row.result_json), shared: true, sharedAt: row.created_at, shareExpiresAt: row.expires_at }; } catch { return null; }
 }
 
 export async function memberRoute(request, env, user, json, origin) {
@@ -73,6 +105,12 @@ export async function memberRoute(request, env, user, json, origin) {
       json_extract(result_json, '$.uxScore') AS uxScore FROM scan_history WHERE user_id = ? AND created_at >= ? ORDER BY created_at DESC, id LIMIT 21 OFFSET ?`)
       .bind(user.id, Date.now() - 90 * 86400000, offset).all();
     return json({ items: results.slice(0, 20), hasMore: results.length > 20 }, 200, origin);
+  }
+  if (path === '/api/member/share') {
+    if (request.method !== 'POST') return json({ message: '지원하지 않는 요청입니다.' }, 405, origin);
+    const body = await request.json().catch(() => null);
+    const token = await createSharedReport(env, user.id, body?.result);
+    return token ? json({ ok: true, token, expiresInDays: 30 }, 200, origin) : json({ message: '공유할 검사 결과가 올바르지 않습니다.' }, 400, origin);
   }
   return json({ message: '지원하지 않는 요청입니다.' }, 405, origin);
 }

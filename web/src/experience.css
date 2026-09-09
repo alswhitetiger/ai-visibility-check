@@ -98,6 +98,27 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; bac
   .fix-card h3 { font-size: 16px; } .fix-card p { font-size: 14px; } .recheck { display: block; padding: 18px; } .recheck .button { margin-top: 13px; width: 100%; }
   .panel { padding: 18px 16px; } .check-row summary { font-size: 14px; gap: 8px; } .check-detail { padding-left: 0; }
 }
+
+/* Improvement workflow: turn a score into a small, trackable plan. */
+.comparison-deltas { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.comparison-deltas span { padding: 9px 12px; border-radius: 10px; background: #edf3ec; color: #345052; font-size: 14px; }
+.comparison-deltas b { color: var(--ok); margin-left: 5px; }
+.comparison li { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-top: 1px solid #dfe9e1; font-size: 14px; }
+.comparison li span { color: var(--muted); white-space: nowrap; }
+.comparison li b { color: var(--ok); }
+.fix-checklist { margin: 16px 0 28px; background: #fffefa; }
+.checklist-heading { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
+.checklist-heading h3 { margin: 0; font-size: 20px; }
+.checklist-heading > span { min-width: 52px; padding: 8px 10px; border-radius: 999px; background: #f9e8e2; color: #a44432; text-align: center; font-size: 13px; font-weight: 800; }
+.fix-checklist ul { list-style: none; padding: 0; margin: 18px 0 12px; border-top: 1px solid var(--line); }
+.fix-checklist li { border-bottom: 1px solid var(--line); padding: 13px 0; }
+.fix-checklist label { display: flex; gap: 11px; align-items: flex-start; cursor: pointer; }
+.fix-checklist input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); }
+.fix-checklist label span { display: grid; gap: 4px; }
+.fix-checklist small { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.fix-checklist .is-done { color: var(--muted); text-decoration: line-through; }
+.actions .hint { margin: 10px 0 0; }
+@media (max-width: 700px) { .comparison li { display: grid; gap: 5px; } .comparison li span { white-space: normal; } .checklist-heading h3 { font-size: 18px; } }
 @media (max-width: 380px) { .score-grid { grid-template-columns: 1fr; } .app-shell { padding: 0 15px; } .intro h1 { font-size: 27px; } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 @media print {
@@ -203,4 +224,3 @@ body { background-color: #fbfaf7; background-image: radial-gradient(circle at 84
   .overview { padding: 28px 0 46px; gap: 12px; }
   .overview article { min-height: 0; }
 }
-

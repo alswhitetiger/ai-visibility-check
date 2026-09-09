@@ -25,7 +25,22 @@ async function getJson(url, signal) {
 function readPrevious(url) { try { return JSON.parse(localStorage.getItem(STORAGE + url)); } catch { return null; } }
 function remember(d) {
   if (d.example || d.pageSkipped) return;
-  try { localStorage.setItem(STORAGE + d.url, JSON.stringify({ version: d.version, scannedAt: d.scannedAt, checks: d.checks.map(c => ({ id: c.id, pass: c.pass })) })); } catch { /* Storage is optional. */ }
+  try { localStorage.setItem(STORAGE + d.url, JSON.stringify({ version: d.version, scannedAt: d.scannedAt, aiScore: d.aiScore, uxScore: d.uxScore, checks: d.checks.map(c => ({ id: c.id, pass: c.pass })) })); } catch { /* Storage is optional. */ }
+}
+
+function statusText(value) { return value === true ? '확인됨' : value === false ? '보완 필요' : '미확인'; }
+
+function FixChecklist({ url, fixes }) {
+  const key = 'shop-check:fixes:' + url;
+  const [done, setDone] = useState(() => { try { const saved = JSON.parse(localStorage.getItem(key) || '{}'); return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}; } catch { return {}; } });
+  if (!fixes.length) return null;
+  function toggle(id) {
+    const next = { ...done, [id]: !done[id] };
+    setDone(next);
+    try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* Storage is optional. */ }
+  }
+  const completed = fixes.filter(c => done[c.id]).length;
+  return <section className="panel fix-checklist"><div className="checklist-heading"><div><p className="eyebrow">개선 체크리스트</p><h3>고친 항목을 표시해 두세요</h3></div><span>{completed} / {fixes.length}</span></div><ul>{fixes.map(c => <li key={c.id}><label><input type="checkbox" checked={!!done[c.id]} onChange={() => toggle(c.id)} /><span><b className={done[c.id] ? 'is-done' : ''}>{titleOf(c)}</b><small>{guides[c.id]?.action || c.why}</small></span></label></li>)}</ul><p className="muted">이 브라우저에 저장됩니다. 수정 후 다시 검사하면 점수와 상태 변화를 확인할 수 있어요.</p></section>;
 }
 
 function Copy({ text, label = '코드 예시 복사' }) {
@@ -73,10 +88,13 @@ function AiAnswer({ ai, example }) {
 }
 
 function Comparison({ data, previous }) {
-  if (!previous || previous.version !== data.version || previous.scannedAt === data.scannedAt || data.cached) return null;
+  if (!previous || !Array.isArray(previous.checks) || previous.version !== data.version || previous.scannedAt === data.scannedAt || data.cached) return null;
   const changed = data.checks.filter(c => previous.checks.some(old => old.id === c.id && old.pass !== c.pass));
+  const delta = (now, old) => typeof now === 'number' && typeof old === 'number' && Number.isFinite(now) && Number.isFinite(old) ? Number(now) - Number(old) : null;
+  const aiDelta = delta(data.aiScore, previous.aiScore), uxDelta = delta(data.uxScore, previous.uxScore);
   return <section className="panel comparison"><h3>이전 검사와 비교</h3><p className="muted">{data.example ? '가상 쇼핑몰에서 브랜드 정보·페이지 소개·이미지 설명을 추가하기 전과 후를 비교했습니다.' : `이 브라우저에 저장된 ${dateOf(previous.scannedAt)} 검사와 비교했습니다.`}</p>
-    {changed.length ? <ul>{changed.map(c => <li key={c.id}>{titleOf(c)} → <b>{c.pass === null ? '미확인' : c.pass ? '확인됨' : '보완 필요'}</b></li>)}</ul> : <p>확인된 항목에 변화가 없습니다.</p>}
+    <div className="comparison-deltas">{aiDelta !== null && <span>AI 정보 <b>{aiDelta > 0 ? '+' : ''}{aiDelta}점</b></span>}{uxDelta !== null && <span>고객 정보 <b>{uxDelta > 0 ? '+' : ''}{uxDelta}점</b></span>}</div>
+    {changed.length ? <ul>{changed.map(c => { const old = previous.checks.find(x => x.id === c.id); return <li key={c.id}>{titleOf(c)} <span>{statusText(old?.pass)} → <b>{statusText(c.pass)}</b></span></li>; })}</ul> : <p>확인된 항목에 변화가 없습니다.</p>}
     <p className="muted">페이지의 정보 변화이며 실제 AI 추천이나 매출의 변화는 아닙니다.</p>
   </section>;
 }
@@ -92,18 +110,20 @@ function Report({ data, previous, onScan, onExample }) {
     {blocked ? <div className="notice"><p>{data.skipReason === 'robots_unavailable' ? '사이트의 접근 규칙(robots.txt)을 읽지 못해 검사를 멈췄습니다. 허용 여부를 모르는 상태를 통과로 처리하지 않습니다.' : '사이트가 게시한 접근 제한에 따라 페이지를 가져오지 않았습니다.'}</p>{data.robots && <p>게시된 규칙상 AI {data.robots.answerTotal}종 중 {data.robots.answerAllowed}종은 입력한 주소에 접근 허용으로 표시됩니다. 실제 접근 성공 여부는 별개입니다.</p>}</div> : <>
       <div className="score-grid">{[['AI가 읽을 기본 정보', data.aiScore, '접근 규칙 · 브랜드 정보 · 원본 텍스트'], ['고객에게 보여줄 기본 정보', data.uxScore, '페이지 소개 · 모바일 설정 · 이미지 설명']].map(([name,score,hint]) => <section className="score-card" key={name}><p>{name}</p><div><strong>{score ?? '—'}</strong><span>/ 100</span></div><progress value={score ?? 0} max="100" aria-label={name} /><p className="muted">{hint}</p></section>)}</div>
       <p className="measurement-note">점수는 이 페이지의 기본 설정을 점검한 값입니다. 실제 AI 검색 노출·추천 여부나 구매 성공률은 측정하지 않습니다.{unknown > 0 && ` 미확인 ${unknown}개 항목은 점수에서 제외했습니다.`}</p>
+      {data.shared && <p className="notice">공유된 검사 결과입니다. 현재 사이트 상태와 다를 수 있습니다. 링크 만료: {dateOf(data.shareExpiresAt)}</p>}
       <Comparison data={data} previous={previous} />
       <ObservedInfo data={data} />
       <section className="next-steps"><div className="section-heading"><div><p className="eyebrow">이제 무엇을 하면 되나요?</p><h2>{fixes.length ? '먼저 이 부분부터 고쳐 보세요' : '확인한 기본 항목을 통과했어요'}</h2></div>{fixes.length > 0 && <span className="muted">보완 {fixes.length}개 중 우선 {Math.min(fixes.length,3)}개</span>}</div>
         {fixes.length ? fixes.slice(0,3).map((c,i) => <FixCard check={c} index={i} key={c.id} />) : <p>실제 휴대폰 화면과 구매 동작도 직접 확인해 보세요. 기본 검사 통과가 모든 기능의 정상 동작을 뜻하지는 않습니다.</p>}
         {!data.example && <div className="recheck"><p><b>사이트를 수정했나요?</b><br/><span className="muted">다시 검사하면 이 브라우저의 이전 결과와 비교합니다. 재검사는 일일 이용 횟수에 포함됩니다.</span></p><button className="button secondary" onClick={() => onScan(data.url, true)}>수정 후 다시 검사</button></div>}
       </section>
+      <FixChecklist key={data.url} url={data.url} fixes={fixes.slice(0, 3)} />
       <ShopBuilder key={data.url + ':' + data.scannedAt} data={data} onScan={onScan} />
       <details className="panel all-checks"><summary>전체 {checks.length}개 점검 항목과 근거 보기</summary><CheckGroup name="AI가 읽을 기본 정보" checks={checks.filter(c => c.axis === 'ai')} /><CheckGroup name="고객에게 보여줄 기본 정보" checks={checks.filter(c => c.axis === 'ux')} /></details>
       {!data.isProductPage && <p className="muted page-hint">지금은 일반 페이지를 검사했습니다. 상품 주소를 입력하면 상품 데이터와 가격도 점검합니다.</p>}
       <AiAnswer ai={data.ai} example={data.example} />
     </>}
-    {!data.example && <><ResultActions data={data} apiBase={API} /><button className="text-button print-button" onClick={() => window.print()}>결과 인쇄 / PDF로 저장</button><p className="muted">페이지 검사: {dateOf(data.scannedAt)} · {data.cached ? '최대 24시간 보관된 결과' : '현재 기준'} · 검사 기준 {data.version}</p></>}
+    {!data.example && <><ResultActions key={data.url + ":" + data.scannedAt} data={data} apiBase={API} /><button className="text-button print-button" onClick={() => window.print()}>결과 인쇄 / PDF로 저장</button><p className="muted">페이지 검사: {dateOf(data.scannedAt)} · {data.cached ? '최대 24시간 보관된 결과' : '현재 기준'} · 검사 기준 {data.version}</p></>}
   </main>;
 }
 
@@ -132,8 +152,10 @@ export default function Experience() {
     const liveList = API ? getJson(API+'/api/showcase').catch(() => ({ items: [] })) : Promise.resolve({ items: [] });
     Promise.all([staticList,liveList]).then(lists => { if (alive) setShowcase([...new Map(lists.flatMap(l => l.items || []).map(x => [x.host,x])).values()]); });
     const params = new URLSearchParams(location.search);
-    const shared = params.get('url'), action = params.get('action');
-    if (shared) { setUrl(shared); scan(shared); }
+    const shared = params.get('url'), shareToken = params.get('share'), action = params.get('action');
+    if (shareToken) {
+      getJson(API + '/api/share?token=' + encodeURIComponent(shareToken)).then(d => { if (alive) { setUrl(d.url || ''); setState({ status: 'done', data: d, previous: null }); } }).catch(e => { if (alive) setState({ status: 'error', message: e.message }); });
+    } else if (shared) { setUrl(shared); scan(shared); }
     else if (action === 'example') example();
     else if (action === 'history' && params.get('history')) openHistory(params.get('history'));
     else if (action === 'project' || action === 'research') openReference(action);

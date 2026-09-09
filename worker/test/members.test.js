@@ -117,3 +117,22 @@ test('authenticated scan saves history, cached lookup is free, unauthenticated s
   await request(path+'&refresh=1', { ...a, body: {} });
   assert.equal((await quota(env, a.data.user.id)).used, 1);
 });
+
+test('sharing requires owned history, preserves server result and expires without consuming scans', async t => {
+  const { env, sqlite, request, signup } = setup(t);
+  const a = await signup('share-a@example.test'), b = await signup('share-b@example.test');
+  const result = { url: 'https://shop.example/', scannedAt: 123, aiScore: 20, checks: [] };
+  assert.equal((await request('/api/member/share', { body: { result } })).status, 401);
+  assert.equal((await request('/api/member/share', { ...a, body: {} })).status, 400);
+  await saveHistory(env, a.data.user.id, result);
+  assert.equal((await request('/api/member/share', { ...b, body: { result } })).status, 400);
+  const response = await request('/api/member/share', { ...a, body: { result: { ...result, aiScore: 100 } } });
+  assert.equal(response.status, 200);
+  const { token } = await response.json();
+  const shared = await (await request('/api/share?token=' + token)).json();
+  assert.equal(shared.aiScore, 20);
+  assert.equal(shared.shared, true);
+  assert.equal((await quota(env, a.data.user.id)).used, 0);
+  sqlite.prepare('UPDATE shared_reports SET expires_at = ?').run(Date.now() - 1);
+  assert.equal((await request('/api/share?token=' + token)).status, 404);
+});
