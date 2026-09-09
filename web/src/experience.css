@@ -162,4 +162,45 @@ body { background: var(--bg); color: var(--fg); }
 .about,.public-list,.site-footer { border-top-color: var(--line); }
 .about h2 { color: var(--fg); }
 @media (max-width: 700px) { .intro { display: block; padding: 48px 0 28px; } .intro::after { display: none; } .intro h1 { font-size: clamp(32px, 10vw, 46px); } .input-panel { padding: 22px; } }
+/* Premium layout pass: align the hero around one clear promise and one clear action. */
+body { background-color: #fbfaf7; background-image: radial-gradient(circle at 84% 12%, #f0e9df80 0, transparent 28rem); }
+.app-shell { max-width: 1180px; }
+.topbar { min-height: 76px; }
+.topbar .brand { letter-spacing: -.025em; }
+.topbar a:not(.brand) { transition: background .18s ease, color .18s ease, transform .18s ease; }
+.topbar a:not(.brand):hover { transform: translateY(-1px); }
+.intro { grid-template-columns: minmax(0,1.08fr) minmax(280px,.72fr); grid-template-rows: auto auto auto; column-gap: 62px; row-gap: 0; padding: 88px 0 48px; align-items: center; }
+.intro > .eyebrow { grid-column: 1; grid-row: 1; align-self: end; margin-bottom: 12px; }
+.intro > h1 { grid-column: 1; grid-row: 2; max-width: 690px; font-size: clamp(44px, 6vw, 72px); line-height: 1.12; letter-spacing: -.075em; margin-bottom: 25px; }
+.intro > .intro-copy { grid-column: 1; grid-row: 3; max-width: 585px; font-size: 18px; line-height: 1.8; }
+.intro::after { grid-column: 2; grid-row: 1 / span 3; width: auto; justify-self: stretch; align-self: center; padding: 38px 32px; border-radius: 24px; background: linear-gradient(145deg,#fffefa,#edf4ec); box-shadow: 0 24px 48px #253d3218; font-size: 15px; line-height: 1.8; }
+.input-panel { position: relative; margin-top: 10px; padding: 32px 34px 23px; border-radius: 24px; box-shadow: 0 22px 46px #172e3228; }
+.input-panel::before { content: '01  /  검사 시작'; display: block; margin-bottom: 20px; color: #b8cbc4; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+.input-panel label { font-size: 16px; margin-bottom: 12px; }
+.input-row { gap: 14px; }
+.input-row input { padding: 17px 18px; border-radius: 13px; font-size: 16px; }
+.input-row .primary { min-width: 190px; border-radius: 13px; padding: 16px 22px; }
+.input-bottom { margin-top: 17px; }
+.overview { gap: 18px; padding: 36px 0 76px; }
+.overview article { min-height: 142px; box-sizing: border-box; transition: transform .18s ease, box-shadow .18s ease; }
+.overview article:hover { transform: translateY(-3px); box-shadow: 0 14px 28px #35433d18; }
+.overview article > span { font-size: 12px; letter-spacing: .1em; }
+.overview h2 { font-size: 20px; letter-spacing: -.03em; }
+.about { padding-top: 62px; padding-bottom: 62px; }
+.public-list { padding-top: 34px; }
+.public-list .button.secondary { border-radius: 999px; padding-inline: 16px; }
+.site-footer { padding-top: 32px; }
+@media (max-width: 700px) {
+  body { background-image: none; }
+  .intro { display: grid; grid-template-columns: 1fr; grid-template-rows: none; gap: 0; padding: 54px 0 34px; }
+  .intro > .eyebrow,.intro > h1,.intro > .intro-copy,.intro::after { grid-column: 1; grid-row: auto; }
+  .intro > h1 { font-size: clamp(40px, 12vw, 56px); line-height: 1.16; margin-bottom: 22px; }
+  .intro > .intro-copy { font-size: 16px; line-height: 1.75; }
+  .intro::after { margin-top: 26px; padding: 24px 22px; border-radius: 18px; }
+  .input-panel { margin-top: 0; padding: 24px 20px 19px; border-radius: 20px; }
+  .input-panel::before { margin-bottom: 16px; }
+  .input-row .primary { width: 100%; }
+  .overview { padding: 28px 0 46px; gap: 12px; }
+  .overview article { min-height: 0; }
+}
 
