@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { guides, titleOf, dateOf } from './guides';
 import ResultActions from './ResultActions';
 import { ObservedInfo, ShopBuilder } from './ShopTools';
-import AccountPanel from './AccountPanel';
-import { API, sameOrigin, loginUrl, memberApi } from './member-api';
+import MembershipGate from './MembershipGate';
+import { API, sameOrigin, memberPageUrl, memberApi } from './member-api';
 import './experience.css';
 
 const VERSION = '2026-09-08.4';
@@ -109,14 +109,14 @@ function Report({ data, previous, onScan, onExample }) {
 
 export default function Experience() {
   const [member, setMember] = useState({ user: null, usage: null });
-  const [revision, setRevision] = useState(0);
+  const [gate, setGate] = useState(null);
   async function refreshMember() {
     if (!sameOrigin) return;
     const next = await memberApi('/api/member/me');
     if (member.user && next.user?.id !== member.user.id) {
       active.current?.abort(); ++serial.current; latest.current = null; setState({ status: 'idle' });
     }
-    setMember(next); setRevision(v=>v+1);
+    setMember(next);
   }
   useEffect(() => { refreshMember().catch(() => {}); }, []);
   const [url, setUrl] = useState('');
@@ -131,18 +131,48 @@ export default function Experience() {
     const staticList = getJson(dataUrl('showcase')).catch(() => ({ items: [] }));
     const liveList = API ? getJson(API+'/api/showcase').catch(() => ({ items: [] })) : Promise.resolve({ items: [] });
     Promise.all([staticList,liveList]).then(lists => { if (alive) setShowcase([...new Map(lists.flatMap(l => l.items || []).map(x => [x.host,x])).values()]); });
-    const shared = new URLSearchParams(location.search).get('url');
+    const params = new URLSearchParams(location.search);
+    const shared = params.get('url'), action = params.get('action');
     if (shared) { setUrl(shared); scan(shared); }
+    else if (action === 'example') example();
+    else if (action === 'history' && params.get('history')) openHistory(params.get('history'));
+    else if (action === 'project' || action === 'research') openReference(action);
     return () => { alive = false; active.current?.abort(); };
   }, []);
   useEffect(() => { if (state.status === 'done') document.getElementById('report')?.focus({ preventScroll: true }); }, [state.status]);
 
+  async function access(intent) {
+    if (sameOrigin) {
+      try {
+        const next = await memberApi('/api/member/me');
+        setMember(next);
+        if (next.user) return true;
+      } catch {
+        setState({ status: 'error', message: '로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.' });
+        return false;
+      }
+    }
+    setGate(intent); return false;
+  }
+  async function openMember() {
+    if (await access({ action: 'account' })) location.assign(memberPageUrl('account'));
+  }
+  async function openReference(action) {
+    if (await access({ action })) location.assign('https://github.com/alswhitetiger/ai-visibility-check' + (action === 'research' ? '/tree/main/web/public/data' : ''));
+  }
+  async function openHistory(id) {
+    if (!await access({ action: 'history', id })) return;
+    try {
+      const data = await memberApi('/api/member/history?id='+encodeURIComponent(id));
+      latest.current = data; setState({ status: 'done', data: { ...data, cached: true } });
+    } catch(e) { setState({ status: 'error', message: e.message }); }
+  }
   async function scan(value, refresh = false) {
+    if (!await access({ action: 'scan', url: value.trim() })) return;
     const target = value.trim();
     if (!target) { setState({ status: 'error', message: '검사할 쇼핑몰 주소를 입력해 주세요.' }); return; }
     active.current?.abort();
     const id = ++serial.current;
-    if (!sameOrigin) { location.assign(loginUrl); return; }
     const controller = new AbortController(); active.current = controller;
     setState({ status: 'loading', target });
     const timer = setTimeout(() => controller.abort(), 60000);
@@ -157,6 +187,7 @@ export default function Experience() {
     finally { clearTimeout(timer); refreshMember().catch(() => {}); }
   }
   async function example(after = false) {
+    if (!await access({ action: 'example' })) return;
     active.current?.abort(); const id = ++serial.current;
     try {
       const samples = await getJson(dataUrl('example'));
@@ -166,16 +197,16 @@ export default function Experience() {
     } catch { if (id === serial.current) setState({ status: 'error', message: '예시를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.' }); }
   }
   return <div className="app-shell">
-    <nav className="topbar"><a className="brand" href={import.meta.env.BASE_URL}><span className="brand-mark" aria-hidden="true">✓</span>가게 체크<span className="brand-en">AI Visibility Check</span></a><a href="#how-it-works">어떻게 검사하나요?</a><a href="#account">{member.user ? "내 사이트" : "로그인 / 회원가입"}</a></nav>
+    <nav className="topbar"><a className="brand" href={import.meta.env.BASE_URL}><span className="brand-mark" aria-hidden="true">✓</span>가게 체크<span className="brand-en">AI Visibility Check</span></a><a href="#how-it-works">어떻게 검사하나요?</a><a href={memberPageUrl("account")} onClick={e=>{e.preventDefault();openMember();}}>{member.user ? "내 사이트" : "로그인 / 회원가입"}</a></nav>
     <header className="intro"><p className="eyebrow">쇼핑몰 운영자를 위한 무료 페이지 점검</p><h1>우리 쇼핑몰,<br/>AI와 고객이 <span>읽기 쉽게</span> 되어 있나요?</h1><p className="intro-copy">주소를 넣으면 빠진 정보를 찾고, 무엇부터 고치면 좋을지 알려드려요.<br className="desktop-br"/> 개발 용어를 몰라도 괜찮아요. 수정 방법까지 함께 안내합니다.</p></header>
-    <section className="input-panel" aria-label="쇼핑몰 검사"><form onSubmit={e => { e.preventDefault(); scan(url); }}><label htmlFor="shop-url">검사할 쇼핑몰 또는 상품 페이지 주소</label><div className="input-row"><input id="shop-url" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="예: myshop.cafe24.com" value={url} onChange={e => setUrl(e.target.value)} /><button className="button primary" disabled={state.status === 'loading'}>{state.status === 'loading' ? '검사 중…' : '우리 가게 검사하기 →'}</button></div></form><div className="input-bottom"><span>회원은 하루 20회 검사 · 예시는 로그인 없이 체험</span><button className="text-button" onClick={() => example()}>주소 없이 예시 먼저 보기 ↗</button></div></section>
-    <AccountPanel user={member.user} usage={member.usage} onRefresh={refreshMember} revision={revision} onScan={scan} onReport={d => { latest.current = d; setState({ status: 'done', data: { ...d, cached: true } }); }} />
+    <section className="input-panel" aria-label="쇼핑몰 검사"><form onSubmit={e => { e.preventDefault(); scan(url); }}><label htmlFor="shop-url">검사할 쇼핑몰 또는 상품 페이지 주소</label><div className="input-row"><input id="shop-url" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="예: myshop.cafe24.com" value={url} onChange={e => setUrl(e.target.value)} /><button className="button primary" disabled={state.status === 'loading'}>{state.status === 'loading' ? '검사 중…' : '우리 가게 검사하기 →'}</button></div></form><div className="input-bottom"><span>회원은 하루 20회 검사 · Q&A는 가입 없이 확인</span><button className="text-button" onClick={() => example()}>주소 없이 예시 먼저 보기 ↗</button></div></section>
+    {gate && <MembershipGate intent={gate} onClose={()=>setGate(null)} />}
     {state.status === 'loading' && <div className="notice loading" role="status"><span className="spinner"/><div><b>페이지의 기본 정보를 확인하고 있어요</b><p>사이트 응답과 AI 질의에 따라 최대 1분 정도 걸릴 수 있어요.</p></div><button className="text-button" onClick={() => { ++serial.current; active.current?.abort(); setState({status:'idle'}); }}>취소</button></div>}
     {state.status === 'error' && <div className="notice" role="alert"><p>{state.message}</p><button className="text-button" onClick={() => example()}>예시 결과 보기 →</button>{latest.current && <button className="text-button" onClick={() => setState({status:'done',data:latest.current})}>직전 결과 다시 보기</button>}</div>}
     {state.status === 'done' && <Report data={state.data} previous={state.previous} onScan={scan} onExample={() => example(!state.data.exampleAfter)} />}
     {state.status === 'idle' && <section className="overview"><article><span>01</span><h2>AI가 읽을 정보</h2><p>AI 접근 규칙, 브랜드 소개 등<br/>기계가 읽을 기본 정보를 확인해요.</p></article><article><span>02</span><h2>고객이 볼 정보</h2><p>페이지 설명, 모바일 설정 등<br/>고객 안내에 필요한 항목을 확인해요.</p></article><article><span>03</span><h2>고치는 방법</h2><p>보완할 항목과 수정 안내를 보고<br/>다시 검사해 변화를 확인해요.</p></article></section>}
     <section id="how-it-works" className="about"><p className="eyebrow">검사 결과, 이렇게 읽어 주세요</p><h2>점수보다 중요한 건<br/>빠진 정보를 채우는 일이에요.</h2><div className="faq"><details><summary>이 점수가 높으면 AI가 우리 가게를 추천하나요?</summary><p>추천을 보장하지 않습니다. 점수는 입력한 페이지의 HTML과 접근 규칙 등 기본 준비 상태를 나타냅니다. 실제 검색 노출·매출·결제 성공 여부는 측정하지 않습니다.</p></details><details><summary>무엇을 가져와서 검사하나요?</summary><p>입력한 페이지와 사이트의 robots.txt, llms.txt, sitemap.xml을 조회합니다. 상품 목록을 자동으로 순회하지 않습니다. 사용자 요청 검사에서는 저희 도구를 명시적으로 차단한 규칙을 따르며, 대량 조사에서는 일반 크롤러 차단 규칙도 따릅니다.</p></details><details><summary>개발을 몰라도 고칠 수 있나요?</summary><p>브랜드 소개나 이미지 설명은 쇼핑몰 관리자에서 수정할 수 있는 경우가 많습니다. 코드 설정이 필요한 항목은 안내와 예시를 운영·개발 담당자에게 전달하세요. 자동으로 사이트를 수정하지는 않습니다.</p></details><details><summary>점수는 어떻게 계산하나요?</summary><p>항목별 가중치를 합산해 100점으로 환산합니다. 배점과 근거는 전체 점검 항목에서 확인할 수 있습니다. 미확인 항목은 제외하고, 상품 데이터·가격은 상품 페이지에서만 검사합니다. llms.txt와 학습용 AI 설정은 참고 항목입니다. 외부에서 인증된 평가 척도는 아닙니다.</p></details><details><summary>이전 검사 기록은 어디에 저장되나요?</summary><p>서버는 페이지 검사를 최대 24시간 재사용합니다. 전후 비교에는 이 브라우저에 저장된 마지막 실제 검사 항목을 사용합니다. 회원의 검사 이력은 계정에 저장되어 다른 기기에서도 최근 90일의 결과를 열 수 있습니다. 위 자동 비교는 이 브라우저의 직전 결과를 기준으로 합니다. 사이트 변경이 없을 때는 저장된 결과를 이용하면 호출을 줄일 수 있습니다.</p></details></div></section>
     {showcase.length > 0 && <section className="public-list"><h2>운영자가 공개에 동의한 가게</h2><p className="muted">원하는 가게를 선택하면 현재 기준으로 검사합니다. 점수 순위가 아닙니다.</p><div className="chips">{showcase.map(s => <button className="button secondary" key={s.host} onClick={() => { setUrl(s.host); scan(s.host); }}>{s.label || s.host} ↗</button>)}</div></section>}
-    <footer className="site-footer"><span>가게 체크 · AI Visibility Check</span><a href="https://github.com/alswhitetiger/ai-visibility-check" target="_blank" rel="noreferrer">프로젝트와 검사 기준 ↗</a><p>원티드 AI Championship 2026 출품작 · 결과는 기본 정보 점검을 위한 참고 자료입니다.</p><details><summary>이전 조사 자료</summary><p>이전 기준으로 조사한 통계는 현재 점수와 직접 비교할 수 없어 첫 화면에서 제외했습니다. 원본은 <a href="https://github.com/alswhitetiger/ai-visibility-check/tree/main/web/public/data" target="_blank" rel="noreferrer">저장소의 조사 자료</a>에서 확인할 수 있습니다.</p></details></footer>
+    <footer className="site-footer"><span>가게 체크 · AI Visibility Check</span><a href="https://github.com/alswhitetiger/ai-visibility-check" onClick={e=>{e.preventDefault();openReference("project");}}>프로젝트와 검사 기준 ↗</a><p>원티드 AI Championship 2026 출품작 · 결과는 기본 정보 점검을 위한 참고 자료입니다.</p><button className="text-button" onClick={()=>openReference("research")}>이전 조사 자료 ↗</button></footer>
   </div>;
 }

@@ -3,13 +3,12 @@ import { memberApi, sameOrigin, loginUrl } from './member-api';
 import './account.css';
 
 const providers = { google: 'Google · Gmail', kakao: '카카오', naver: '네이버' };
-export default function AccountPanel({ user, usage, onRefresh, onScan, onReport, revision }) {
+export default function AccountPanel({ user, usage, onRefresh, onScan, onReport, revision, initialMode = 'login', callbackURL = location.origin + '/ai-visibility-check/account/' }) {
   const [config, setConfig] = useState({ providers: {} });
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState(initialMode);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState('');
   const [sites, setSites] = useState([]), [history, setHistory] = useState([]), [more, setMore] = useState(false), [accounts, setAccounts] = useState([]);
   const [siteUrl, setSiteUrl] = useState(''), [siteLabel, setSiteLabel] = useState('');
-  const callbackURL = location.origin + '/ai-visibility-check/#account';
   useEffect(() => { memberApi('/api/member/config').then(setConfig).catch(() => setMessage('회원 서비스를 연결하지 못했습니다. 잠시 후 새로고침해 주세요.')); }, []);
   useEffect(() => {
     let active = true;
@@ -27,7 +26,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
     e.preventDefault(); const fields = Object.fromEntries(new FormData(e.currentTarget));
     await act(async () => {
       if (mode === 'reset') {
-        await memberApi('/api/auth/request-password-reset', { email: fields.email, redirectTo: location.origin + '/ai-visibility-check/' });
+        await memberApi('/api/auth/request-password-reset', { email: fields.email, redirectTo: location.origin + '/ai-visibility-check/login/' });
         setMessage('가입된 이메일이면 비밀번호 재설정 안내를 보내드립니다.'); return;
       }
       if (mode === 'new-password') {
@@ -69,7 +68,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
       <div className="member-grid"><section><h3>내 사이트 <small>{sites.length} / 50</small></h3><form className="account-form" onSubmit={e => { e.preventDefault(); act(async () => { await memberApi('/api/member/sites', { url: siteUrl, label: siteLabel }); setSiteUrl(''); setSiteLabel(''); await onRefresh(); }); }}><label>사이트 이름<input value={siteLabel} onChange={e=>setSiteLabel(e.target.value)} maxLength={80} placeholder="예: 우리 가게" /></label><label>사이트 주소<input value={siteUrl} onChange={e=>setSiteUrl(e.target.value)} required maxLength={2048} placeholder="https://myshop.com" /></label><button className="button secondary" disabled={busy}>내 사이트에 저장</button></form>
         {!sites.length && <p className="muted">자주 검사하는 주소를 저장해 보세요.</p>}
         <ul className="member-list">{sites.map(s => <li key={s.id}><b>{s.label}</b><span className="muted">{s.url}</span><div><button className="text-button" disabled={busy} onClick={() => onScan(s.url)}>검사하기</button><button className="text-button" disabled={busy} onClick={() => act(async () => { await memberApi('/api/member/sites?id='+encodeURIComponent(s.id), null, 'DELETE'); await onRefresh(); })}>목록에서 삭제</button></div></li>)}</ul>
-      </section><section><h3>검사 이력</h3><p className="muted">최근 90일 · 기록 조회는 횟수를 쓰지 않아요.</p>{!history.length && <p>첫 검사를 완료하면 여기에 기록됩니다.</p>}<ul className="member-list">{history.map(h=><li key={h.id}><b>{h.url}</b><span className="muted">{new Date(h.created_at).toLocaleString('ko-KR')} · AI 정보 {h.aiScore ?? '—'} / 고객 정보 {h.uxScore ?? '—'}</span><div><button className="text-button" onClick={() => act(async () => onReport(await memberApi('/api/member/history?id='+encodeURIComponent(h.id))))}>결과 보기</button><button className="text-button" onClick={() => act(async () => { await memberApi('/api/member/history?id='+encodeURIComponent(h.id), null, 'DELETE'); await onRefresh(); })}>기록 삭제</button></div></li>)}</ul>{more && <button className="button secondary" disabled={busy} onClick={() => act(async () => { const d = await memberApi('/api/member/history?offset='+history.length); setHistory([...history,...d.items]); setMore(d.hasMore); })}>이전 기록 더 보기</button>}</section></div>
+      </section><section><h3>검사 이력</h3><p className="muted">최근 90일 · 기록 조회는 횟수를 쓰지 않아요.</p>{!history.length && <p>첫 검사를 완료하면 여기에 기록됩니다.</p>}<ul className="member-list">{history.map(h=><li key={h.id}><b>{h.url}</b><span className="muted">{new Date(h.created_at).toLocaleString('ko-KR')} · AI 정보 {h.aiScore ?? '—'} / 고객 정보 {h.uxScore ?? '—'}</span><div><button className="text-button" onClick={() => onReport(null, h.id)}>결과 보기</button><button className="text-button" onClick={() => act(async () => { await memberApi('/api/member/history?id='+encodeURIComponent(h.id), null, 'DELETE'); await onRefresh(); })}>기록 삭제</button></div></li>)}</ul>{more && <button className="button secondary" disabled={busy} onClick={() => act(async () => { const d = await memberApi('/api/member/history?offset='+history.length); setHistory([...history,...d.items]); setMore(d.hasMore); })}>이전 기록 더 보기</button>}</section></div>
       <details><summary>로그인 계정 연결 및 비밀번호 변경</summary><p className="muted">연결한 계정으로 로그인하면 같은 사이트와 기록을 사용할 수 있어요. 이메일이 같아도 자동으로 합치지 않습니다.</p><div className="social-logins">{Object.entries(providers).map(([p,label]) => { const linked = accounts.some(a=>a.providerId===p); return <button className="button secondary" key={p} disabled={busy || linked || !config.providers[p]} onClick={()=>social(p,true)}>{label} {linked ? '연결됨' : config.providers[p] ? '연결하기' : '연결 준비 중'}</button>; })}</div>{accounts.some(a=>a.providerId==='credential') && <form className="account-form" onSubmit={e=>{e.preventDefault(); const form=e.currentTarget, data=Object.fromEntries(new FormData(form)); act(async()=>{await memberApi('/api/auth/change-password',{...data,revokeOtherSessions:true}); form.reset(); setMessage('비밀번호를 변경했습니다. 다른 기기의 로그인은 해제됩니다.');});}}><label>현재 비밀번호<input name="currentPassword" type="password" required autoComplete="current-password" /></label><label>새 비밀번호<input name="newPassword" type="password" required minLength={12} maxLength={128} autoComplete="new-password" /></label><button className="button secondary" disabled={busy}>비밀번호 변경</button></form>}</details>
     </>}
     <p role="status" className="account-message">{message}</p>

@@ -292,7 +292,7 @@ export default {
         if (!env.AUTH_SECRET) return json({ message: '로그인 설정을 준비 중입니다.' }, 503, origin);
         return await createAuth(env).handler(request);
       }
-      if (pathname === '/api/member/config') return json({ providers: providerStatus(env), emailReady: !!env.AUTH_SECRET, emailVerification: !!(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM), loginUrl: env.AUTH_BASE_URL + '/ai-visibility-check/#account' }, 200, origin);
+      if (pathname === '/api/member/config') return json({ providers: providerStatus(env), emailReady: !!env.AUTH_SECRET, emailVerification: !!(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM), loginUrl: env.AUTH_BASE_URL + '/ai-visibility-check/signup/' }, 200, origin);
       if (pathname.startsWith('/api/member/')) {
         const session = await sessionOf(request, env);
         if (pathname === '/api/member/me') return json({ user: session ? { id: session.user.id, name: session.user.name, email: session.user.email, emailVerified: session.user.emailVerified } : null, usage: session ? await quota(env, session.user.id) : null }, 200, origin);
@@ -314,6 +314,7 @@ export default {
       if (env.ASSETS && !pathname.startsWith('/api/')) {
         const assetUrl = new URL(request.url);
         assetUrl.pathname = pathname.replace(/^\/ai-visibility-check\//, '/');
+        if (/^\/(signup|login|account)\/?$/.test(assetUrl.pathname)) assetUrl.pathname = '/';
         if (assetUrl.pathname === '/ai-visibility-check') return Response.redirect(env.AUTH_BASE_URL + '/ai-visibility-check/', 302);
         const response = await env.ASSETS.fetch(new Request(assetUrl, request));
         const headers = new Headers(response.headers);
