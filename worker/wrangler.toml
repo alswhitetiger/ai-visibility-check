@@ -1,11 +1,20 @@
 name = "ai-visibility"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+run_worker_first = true
 
 # 프론트(GitHub Pages) 주소. CORS 허용 대상.
 [vars]
 ALLOWED_ORIGINS = "http://localhost:5173,https://alswhitetiger.github.io"
 DAILY_SCAN_LIMIT = "400"
+ACCOUNT_DAILY_LIMIT = "20"
+AUTH_REQUIRED = "true"
+AUTH_BASE_URL = "https://ai-visibility.ai-visibility-worker.workers.dev"
 CACHE_TTL_HOURS = "24"
 
 # 사용할 모델. API 결제를 연결하면 상위 모델로 바꾼다.

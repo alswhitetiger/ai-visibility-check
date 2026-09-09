@@ -53,6 +53,12 @@ Worker 배포는 worker/에서 npm run deploy를 실행합니다. GitHub Pages�
 
 자세한 환경 설정: [docs/SETUP.md](docs/SETUP.md). 제출 설명: [docs/SUBMISSION.md](docs/SUBMISSION.md).
 
+## 회원 기능 추가 작업
+
+이메일 가입·로그인, 내 사이트, 최근 90일 검사 이력, 계정별 하루 20회 한도와 Google·카카오·네이버 계정 연결 코드를 추가했습니다. 소셜 로그인은 개발자 앱 키가 등록된 제공자만 활성화됩니다. 회원 화면은 보안 쿠키 사용을 위해 Worker와 같은 도메인에서 제공합니다.
+
+배포 및 연결 절차와 미완료 항목: [docs/ACCOUNTS.md](docs/ACCOUNTS.md). 이메일 회원 기능은 2026-09-09 운영 배포 및 검증을 완료했습니다. 소셜 로그인과 이메일 발송은 외부 서비스 설정이 남아 있습니다.
+
 ## 라이선스
 
 MIT. 사용한 의존성의 라이선스는 해당 패키지를 따릅니다.

@@ -1,5 +1,7 @@
 import { diagnose, QUADRANT_LABEL, DIAGNOSIS_VERSION } from './diagnose.js';
 import { askAI, brandProbePrompt } from './ai.js';
+import { createAuth, sessionOf, providerStatus } from './auth.js';
+import { quota, reserveScan, releaseScan, saveHistory, memberRoute, publicUrl } from './members.js';
 
 const json = (data, status, origin) =>
   new Response(JSON.stringify(data), {
@@ -93,19 +95,35 @@ function normalize(input) {
 }
 
 async function handleScan(request, env, origin) {
+  const session = await sessionOf(request, env);
+  if (env.AUTH_REQUIRED === 'true' && !session) return json({ error: 'LOGIN_REQUIRED', message: '로그인하면 검사와 기록 저장을 이용할 수 있어요.' }, 401, origin);
+  if (env.AUTH_REQUIRED === 'true' && request.method !== 'POST') return json({ error: 'METHOD', message: '새 화면에서 다시 검사해 주세요.' }, 405, origin);
   const params = new URL(request.url).searchParams;
   const target = normalize(params.get('url'));
-  if (!target) return json({ error: 'INVALID_URL' }, 400, origin);
+  if (!target || !publicUrl(target.href)) return json({ error: 'INVALID_URL' }, 400, origin);
 
   const ttl = Number(env.CACHE_TTL_HOURS || 24);
   const cached = params.get('refresh') === '1' ? null : await readCache(env, target.href, ttl);
-  if (cached) return json(cached, 200, origin);
+  if (cached) {
+    if (session && !cached.pageSkipped) await saveHistory(env, session.user.id, cached);
+    return json(cached, 200, origin);
+  }
+
+  let reservation;
+  if (session) {
+    reservation = await reserveScan(env, session.user.id);
+    if (!reservation) {
+      const usage = await quota(env, session.user.id);
+      return json({ error: usage.remaining === 0 ? 'ACCOUNT_LIMIT' : 'DAILY_LIMIT', message: usage.remaining === 0 ? '오늘 계정의 검사 횟수를 모두 사용했어요. 한국 시간 자정에 초기화됩니다.' : '오늘 서비스 전체 검사 한도에 도달했어요. 저장된 기록과 예시는 계속 볼 수 있습니다.', usage }, 429, origin);
+    }
+  }
+  try {
 
   // 심사위원용 우회 코드. 설정돼 있고 일치하면 한도를 건너뛴다.
   const code = params.get('code') || '';
   const isJudge = !!env.JUDGE_CODE && code === env.JUDGE_CODE;
 
-  if (!isJudge) {
+  if (!isJudge && !session) {
     const day = today();
     const global = await bump(env, 'global:' + day, Number(env.DAILY_SCAN_LIMIT || 400));
     if (global.exceeded) {
@@ -158,7 +176,11 @@ async function handleScan(request, env, origin) {
   }
 
   await writeCache(env, result);
+  if (session && !result.pageSkipped) await saveHistory(env, session.user.id, result, reservation);
   return json(result, 200, origin);
+  } finally {
+    await releaseScan(env, reservation);
+  }
 }
 
 // 공개 목록 등록은 "그 사이트를 실제로 제어하는 사람"만 할 수 있어야 한다.
@@ -254,7 +276,7 @@ export default {
         status: 204,
         headers: {
           'access-control-allow-origin': origin,
-          'access-control-allow-methods': 'GET,POST,OPTIONS',
+          'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
           'access-control-allow-headers': 'content-type',
           'access-control-max-age': '86400',
         },
@@ -262,6 +284,21 @@ export default {
     }
 
     try {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        const expected = env.AUTH_BASE_URL || new URL(request.url).origin;
+        if (request.headers.get('Origin') !== expected) return json({ message: '허용되지 않은 요청입니다.' }, 403, origin);
+      }
+      if (pathname.startsWith('/api/auth/')) {
+        if (!env.AUTH_SECRET) return json({ message: '로그인 설정을 준비 중입니다.' }, 503, origin);
+        return await createAuth(env).handler(request);
+      }
+      if (pathname === '/api/member/config') return json({ providers: providerStatus(env), emailReady: !!env.AUTH_SECRET, emailVerification: !!(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM), loginUrl: env.AUTH_BASE_URL + '/ai-visibility-check/#account' }, 200, origin);
+      if (pathname.startsWith('/api/member/')) {
+        const session = await sessionOf(request, env);
+        if (pathname === '/api/member/me') return json({ user: session ? { id: session.user.id, name: session.user.name, email: session.user.email, emailVerified: session.user.emailVerified } : null, usage: session ? await quota(env, session.user.id) : null }, 200, origin);
+        if (!session) return json({ message: '로그인이 필요합니다.' }, 401, origin);
+        return await memberRoute(request, env, session.user, json, origin);
+      }
       if (pathname === '/api/health') {
         return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now() }, 200, origin);
       }
@@ -274,9 +311,21 @@ export default {
       if (pathname === '/api/optin') {
         return await handleOptin(request, env, origin);
       }
+      if (env.ASSETS && !pathname.startsWith('/api/')) {
+        const assetUrl = new URL(request.url);
+        assetUrl.pathname = pathname.replace(/^\/ai-visibility-check\//, '/');
+        if (assetUrl.pathname === '/ai-visibility-check') return Response.redirect(env.AUTH_BASE_URL + '/ai-visibility-check/', 302);
+        const response = await env.ASSETS.fetch(new Request(assetUrl, request));
+        const headers = new Headers(response.headers);
+        headers.set('Referrer-Policy', 'same-origin');
+        headers.set('X-Content-Type-Options', 'nosniff');
+        headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+        return new Response(response.body, { status: response.status, headers });
+      }
       return json({ error: 'NOT_FOUND' }, 404, origin);
     } catch (e) {
-      return json({ error: 'INTERNAL', message: String(e && e.message || e) }, 500, origin);
+      console.error('Request failed:', e?.name);
+      return json({ error: 'INTERNAL', message: '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.' }, 500, origin);
     }
   },
 };
