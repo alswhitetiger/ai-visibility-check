@@ -14,6 +14,17 @@
 남은 것: AI 키 등록 (`GEMINI_API_KEY`, `JUDGE_CODE`). 키가 없어도 규칙 기반
 진단은 정상 동작하며, AI 실제 응답 영역만 "대기 중"으로 표시된다.
 
+`wrangler.toml` 에 `AUTH_REQUIRED = "true"` 가 설정돼 있어 실제 URL 검사는
+로그인이 필요하다. 프론트(GitHub Pages)와 API(Workers)가 서로 다른 도메인이라
+세션 쿠키를 프론트에서 바로 읽을 수 없다. 그래서 프론트는 로그인 여부를
+확인하려 시도하지 않고 곧바로 "로그인하고 검사하기" 안내를 띄우며, 그 링크는
+API와 같은 도메인(`workers.dev/ai-visibility-check/login/`)에서 로그인을
+마치고 그 도메인 위에서 검사를 이어가는 구조다. `docs/SUBMISSION.md` 의
+심사 체험 안내도 이에 맞춰 두었다. 로그인 없이 실제 URL을 검사하게 하려면
+`AUTH_REQUIRED` 를 `false` 로 되돌리거나(계정·이력 기능은 비활성화됨), 크로스
+도메인 세션(예: `SameSite=None; Secure` 쿠키 + CORS `Allow-Credentials`)을
+새로 구현해야 한다.
+
 ## 0단계 — 배포 방식 (완료됨)
 
 GitHub Actions 워크플로가 활성화되어 있다. `main` 의 `web/**` 이 바뀌면
