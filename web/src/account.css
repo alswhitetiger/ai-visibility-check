@@ -17,6 +17,17 @@
 .membership-alternative p { margin-top: 6px; font-size: 13px; line-height: 1.65; }
 .membership-alternative small { display: block; margin-top: 9px; color: #718179; font-size: 11px; line-height: 1.5; }
 @media(max-width:600px) { .membership-dialog { padding: 30px 22px 24px; border-radius: 20px; } .membership-dialog-actions { gap: 9px; } .membership-dialog-actions .button { width: 100%; } }
+.membership-dialog-header { display: flex; align-items: center; gap: 12px; margin: 7px 0 22px; }
+.membership-dialog-header .eyebrow { margin: 0 0 3px; }
+.membership-dialog-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: #183638; color: #ffab94; font-size: 18px; font-weight: 800; }
+.membership-dialog-kicker { color: #718179; font-size: 12px; }
+.membership-dialog h2 { font-size: clamp(26px, 4vw, 34px); line-height: 1.25; }
+.membership-dialog-actions { display: grid; grid-template-columns: 1.25fr .85fr; margin: 30px 0 16px; }
+.membership-dialog-actions .button { min-height: 50px; }
+.membership-dialog-actions .button.primary { box-shadow: 0 8px 18px rgba(217,87,64,.2); }
+.membership-dialog-login { margin: 0; color: #718179; font-size: 13px; }
+.membership-dialog-login a { color: #365c4c; font-weight: 800; text-underline-offset: 4px; }
+@media(max-width:600px) { .membership-dialog-actions { grid-template-columns: 1fr; margin-top: 24px; } .membership-dialog h2 { font-size: 27px; } }
 .account-page { max-width: 1000px; }
 .account-page .topbar { background: transparent; }
 .account-page .account-panel { border: 0; border-radius: 22px; background: transparent; padding: 0; box-shadow: none; }
