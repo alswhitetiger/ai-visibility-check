@@ -46,6 +46,17 @@ function Copy({ text, label = '코드 예시 복사' }) {
   return <div className="copy-row"><button className="button small secondary" onClick={copy}>{label}</button><span role="status">{message}</span></div>;
 }
 
+function DownloadResult({ data }) {
+  function download() {
+    const safe = { ...data, ai: data.ai ? { ...data.ai, answer: undefined } : undefined };
+    const blob = new Blob([JSON.stringify(safe, null, 2)], { type: 'application/json;charset=utf-8' });
+    const href = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = href; a.download = `shop-check-${new Date(data.scannedAt || Date.now()).toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(href);
+  }
+  return <button className="button secondary small" onClick={download}>결과 파일 다운로드</button>;
+}
+
 function FixCard({ check, index }) {
   const guide = guides[check.id];
   return <article className="fix-card">
@@ -119,7 +130,7 @@ function Report({ data, previous, onScan, onExample, user }) {
       {!data.isProductPage && <p className="muted page-hint">지금은 일반 페이지를 검사했습니다. 상품 주소를 입력하면 상품 데이터와 가격도 점검합니다.</p>}
       <AiAnswer ai={data.ai} example={data.example} />
     </>}
-    {!data.example && <><ResultActions key={data.url + ":" + data.scannedAt} data={data} apiBase={API} /><button className="text-button print-button" onClick={() => window.print()}>결과 인쇄 / PDF로 저장</button><p className="muted">페이지 검사: {dateOf(data.scannedAt)} · {data.cached ? '최대 24시간 보관된 결과' : '현재 기준'} · 검사 기준 {data.version}</p></>}
+    {!data.example && <><ResultActions key={data.url + ":" + data.scannedAt} data={data} apiBase={API} /><div className="result-save-actions"><DownloadResult data={data} /><button className="button secondary small print-button" onClick={() => window.print()}>인쇄 / PDF로 저장</button></div><p className="muted">페이지 검사: {dateOf(data.scannedAt)} · {data.cached ? '최대 24시간 보관된 결과' : '현재 기준'} · 검사 기준 {data.version}</p></>}
   </main>;
 }
 

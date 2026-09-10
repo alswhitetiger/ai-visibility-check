@@ -140,6 +140,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; bac
 .observed-excerpt, pre { background: #f0f5ee; border-color: #dce8df; color: #365c4c; }
 .shop-builder { border-color: #c8ddd0; background: #fffefa; }
 .shop-builder input:not([type=checkbox]), .shop-builder textarea, .shop-builder select { border-color: #cbd9d1; background: #fbfdf9; }
+.result-save-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 @media print {
   body { background: white; color: #111; font-size: 11pt; } .app-shell { max-width: none; padding: 0; }
   .topbar,.intro,.input-panel,.about,.public-list,.site-footer,.actions,.print-button,.recheck,.copy-row { display: none !important; }
