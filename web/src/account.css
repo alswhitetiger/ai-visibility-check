@@ -16,3 +16,125 @@
 .account-page .button.primary { background: var(--accent); }
 .account-page .button.primary:hover { background: #d95740; }
 
+/* 로그인·회원가입은 한 가지 행동에 집중하도록 카드형으로 정리한다. */
+.account-page:has(.account-form):not(:has(.member-grid)) {
+  max-width: 100%;
+  min-height: 100vh;
+  background: radial-gradient(circle at 12% 18%, #f5e8df 0, transparent 34%), var(--bg);
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .topbar {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 22px 32px;
+  border-bottom: 1px solid #e9e3da;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) main {
+  max-width: 520px;
+  margin: 56px auto 90px;
+  padding: 0 20px;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .account-panel {
+  position: relative;
+  padding: 38px 40px 34px;
+  border: 1px solid #e8e0d8;
+  border-radius: 24px;
+  background: rgba(255, 255, 252, .94);
+  box-shadow: 0 24px 70px rgba(50, 39, 28, .1);
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .account-panel::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 40px; right: 40px; height: 4px;
+  border-radius: 0 0 6px 6px;
+  background: var(--accent);
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .section-heading {
+  display: block;
+  margin-bottom: 22px;
+  text-align: center;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .section-heading .eyebrow {
+  margin-bottom: 8px;
+  color: #d85d45;
+  font-weight: 700;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .section-heading h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 4vw, 1.8rem);
+  letter-spacing: -.04em;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .account-panel > p.muted:first-of-type {
+  margin: 0 auto 24px;
+  max-width: 360px;
+  color: #746e67;
+  text-align: center;
+  font-size: .93rem;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .account-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 0 0 22px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f0ece6;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .account-tabs .button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #756e66;
+  font-size: .9rem;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .account-tabs .button.primary {
+  background: #fffefa;
+  color: var(--fg);
+  box-shadow: 0 2px 8px rgba(30, 25, 20, .09);
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .account-form { gap: 16px; margin: 0; }
+.account-page:has(.account-form):not(:has(.member-grid)) .account-form label { gap: 8px; color: #38342f; font-size: .88rem; }
+.account-page:has(.account-form):not(:has(.member-grid)) .account-form input {
+  min-height: 50px;
+  padding: 13px 15px;
+  border-color: #d9d1c8;
+  border-radius: 11px;
+  background: #fff;
+  transition: border-color .2s, box-shadow .2s;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .account-form input:focus {
+  outline: none;
+  border-color: #dc684f;
+  box-shadow: 0 0 0 4px rgba(220, 104, 79, .14);
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .account-form > .button.primary {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 4px;
+  border-radius: 11px;
+  background: #dc6049;
+  font-size: 1rem;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .social-logins {
+  display: grid;
+  gap: 9px;
+  margin: 24px 0 0;
+  padding-top: 22px;
+  border-top: 1px solid #ebe5dd;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .social-logins .button {
+  min-height: 44px;
+  border-radius: 10px;
+  background: #fff;
+  border-color: #ddd5cc;
+  font-size: .88rem;
+}
+.account-page:has(.account-form):not(:has(.member-grid)) .privacy-note { margin-top: 24px; padding-top: 18px; border-top: 1px solid #ebe5dd; }
+.account-page:has(.account-form):not(:has(.member-grid)) .site-footer { padding-bottom: 28px; text-align: center; }
+@media (max-width: 600px) {
+  .account-page:has(.account-form):not(:has(.member-grid)) .topbar { padding: 18px 20px; }
+  .account-page:has(.account-form):not(:has(.member-grid)) main { margin: 28px auto 60px; }
+  .account-page:has(.account-form):not(:has(.member-grid)) .account-panel { padding: 32px 22px 26px; border-radius: 20px; }
+  .account-page:has(.account-form):not(:has(.member-grid)) .account-panel::before { left: 22px; right: 22px; }
+}
+
