@@ -123,16 +123,16 @@ function Report({ data, previous, onScan, onExample, user }) {
       <ObservedInfo data={data} />
       <section className="next-steps"><div className="section-heading"><div><p className="eyebrow">이제 무엇을 하면 되나요?</p><h2>{fixes.length ? '먼저 이 부분부터 고쳐 보세요' : '확인한 기본 항목을 통과했어요'}</h2></div>{fixes.length > 0 && <span className="muted">보완 {fixes.length}개 중 우선 {Math.min(fixes.length,3)}개</span>}</div>
         {fixes.length ? fixes.slice(0,3).map((c,i) => <FixCard check={c} index={i} key={c.id} />) : <p>실제 휴대폰 화면과 구매 동작도 직접 확인해 보세요. 기본 검사 통과가 모든 기능의 정상 동작을 뜻하지는 않습니다.</p>}
-        {!data.example && <div className="recheck"><p><b>사이트를 수정했나요?</b><br/><span className="muted">다시 검사하면 이 브라우저의 이전 결과와 비교합니다. 재검사는 일일 이용 횟수에 포함됩니다.</span></p><button className="button secondary" onClick={() => onScan(data.url, true)}>수정 후 다시 검사</button></div>}
+        {!data.example && !data.shared && <div className="recheck"><p><b>사이트를 수정했나요?</b><br/><span className="muted">다시 검사하면 이 브라우저의 이전 결과와 비교합니다. 재검사는 일일 이용 횟수에 포함됩니다.</span></p><button className="button secondary" onClick={() => onScan(data.url, true)}>수정 후 다시 검사</button></div>}
       </section>
-      <FixChecklist key={data.url + (user?.id || "guest")} url={data.url} fixes={fixes} cloud={!!user && !data.example && !data.shared} />
+      {!data.shared && <FixChecklist key={data.url + (user?.id || "guest")} url={data.url} fixes={fixes} cloud={!!user && !data.example} />}
       <PlatformGuide />
-      <ShopBuilder key={data.url + ':' + data.scannedAt} data={data} onScan={onScan} />
+      {!data.shared && <ShopBuilder key={data.url + ':' + data.scannedAt} data={data} onScan={onScan} />}
       <details className="panel all-checks"><summary>전체 {checks.length}개 점검 항목과 근거 보기</summary><CheckGroup name="AI가 읽을 기본 정보" checks={checks.filter(c => c.axis === 'ai')} /><CheckGroup name="고객에게 보여줄 기본 정보" checks={checks.filter(c => c.axis === 'ux')} /></details>
       {!data.isProductPage && <p className="muted page-hint">지금은 일반 페이지를 검사했습니다. 상품 주소를 입력하면 상품 데이터와 가격도 점검합니다.</p>}
       <AiAnswer ai={data.ai} example={data.example} />
     </>}
-    {!data.example && <><ResultActions key={data.url + ":" + data.scannedAt} data={data} apiBase={API} /><div className="result-save-actions"><DownloadResult data={data} /><button className="button secondary small print-button" onClick={() => window.print()}>인쇄 / PDF로 저장</button></div><p className="muted">페이지 검사: {dateOf(data.scannedAt)} · {data.cached ? '최대 24시간 보관된 결과' : '현재 기준'} · 검사 기준 {data.version}</p></>}
+    {!data.example && <>{!data.shared && <ResultActions key={data.url + ":" + data.scannedAt} data={data} apiBase={API} />}<div className="result-save-actions"><DownloadResult data={data} /><button className="button secondary small print-button" onClick={() => window.print()}>인쇄 / PDF로 저장</button></div><p className="muted">페이지 검사: {dateOf(data.scannedAt)} · {data.cached ? '최대 24시간 보관된 결과' : '현재 기준'} · 검사 기준 {data.version}</p></>}
   </main>;
 }
 

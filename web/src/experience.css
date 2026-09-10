@@ -248,3 +248,6 @@ body { background-color: #fbfaf7; background-image: radial-gradient(circle at 84
   .overview { padding: 28px 0 46px; gap: 12px; }
   .overview article { min-height: 0; }
 }
+
+/* Keep controls out of exported reports. */
+@media print { .result-save-actions { display: none !important; } }

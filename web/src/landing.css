@@ -107,7 +107,7 @@ body { overflow-x: hidden; }
 .guide-steps article + article { padding-top: 30px; }
 .guide-example { border-radius: 12px; }
 @media(max-width:700px) {
-  .landing-hero { margin-top: 16px; padding: 34px 22px 24px; border-radius: 22px; }
+  .landing-hero { grid-template-columns: minmax(0, 1fr); margin-top: 16px; padding: 34px 22px 24px; border-radius: 22px; }
   .hero-message h1 { font-size: clamp(38px, 11vw, 54px); }
   .overview article { padding: 18px; }
   .guide-heading { position: static; }
