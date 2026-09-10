@@ -138,3 +138,19 @@
   .account-page:has(.account-form):not(:has(.member-grid)) .account-panel::before { left: 22px; right: 22px; }
 }
 
+/* Keep account and report screens in the same visual system as the landing page. */
+.account-page { background: #fbfaf7; color: #203537; }
+.account-page .topbar { border-bottom-color: #e2e5df; }
+.account-page .account-panel { color: #203537; }
+.account-page .account-panel h2, .account-page .account-panel h3 { letter-spacing: -.035em; }
+.account-page .button.primary { background: #d95740; border-color: #d95740; border-radius: 11px; }
+.account-page .button.primary:hover { background: #c94d39; }
+.account-page .dashboard-hero { background: linear-gradient(125deg,#183638,#35665b); border-radius: 22px; }
+.account-page .dashboard-quota { border-radius: 14px; background: #fffefa; }
+.account-page .score-summary, .account-page .history-chart, .account-page .dashboard-empty { border-color: #e2e5df; background: #fffefa; }
+.account-page .account-usage { background: #edf3ec; border: 1px solid #dfe8dc; }
+@media(max-width:700px) {
+  .account-page .dashboard-hero { padding: 22px; border-radius: 18px; }
+  .account-page .score-summary { padding: 20px; }
+}
+
