@@ -83,6 +83,8 @@ body { overflow-x: hidden; }
   box-shadow: 0 0 0 42px rgba(255,255,255,.035), 0 0 0 84px rgba(255,255,255,.025);
 }
 .hero-message, .preview-stage { position: relative; z-index: 1; }
+.preview-stage { min-width: 0; }
+.preview-report { min-width: 0; overflow: hidden; }
 .hero-kicker { color: #c9e1d1; }
 .hero-kicker > span { background: #f3b29f; box-shadow: 0 0 0 5px rgba(243,178,159,.16); }
 .hero-message h1 { color: #fffdf8; max-width: 540px; }
@@ -109,4 +111,17 @@ body { overflow-x: hidden; }
   .hero-message h1 { font-size: clamp(38px, 11vw, 54px); }
   .overview article { padding: 18px; }
   .guide-heading { position: static; }
+}
+@media(max-width:480px) {
+  .landing-hero { padding-inline: 17px; }
+  .hero-message h1 { font-size: 39px; letter-spacing: -.055em; }
+  .hero-search > div { flex-direction: column; padding: 7px; }
+  .hero-search input { width: 100%; min-height: 42px; box-sizing: border-box; }
+  .hero-search .button { width: 100%; }
+  .preview-stage { padding: 13px; }
+  .preview-report { padding: 16px; }
+  .preview-title h2 { font-size: 21px; }
+  .preview-scores { gap: 8px; padding-block: 18px; }
+  .preview-ring { width: 82px; height: 82px; }
+  .preview-ring strong { width: 68px; height: 68px; font-size: 24px; }
 }
