@@ -3,6 +3,10 @@ export const API = location.hostname.endsWith('.workers.dev') ? '' : configured;
 export const sameOrigin = !API || new URL(API).origin === location.origin;
 export const memberBase = (API || location.origin) + '/ai-visibility-check/';
 export const loginUrl = memberBase + 'login/';
+const SESSION_KEY = 'shop-check:session-active';
+export const sessionIsActive = () => sessionStorage.getItem(SESSION_KEY) === '1';
+export const markSessionActive = () => sessionStorage.setItem(SESSION_KEY, '1');
+export const clearSessionActive = () => sessionStorage.removeItem(SESSION_KEY);
 export function memberPageUrl(page = 'signup', intent = {}) {
   const url = new URL(page + '/', memberBase);
   if (intent.action) url.searchParams.set('action', intent.action);

@@ -3,7 +3,7 @@ import { guides, titleOf, dateOf } from './guides';
 import ResultActions from './ResultActions';
 import { ObservedInfo, ShopBuilder } from './ShopTools';
 import MembershipGate from './MembershipGate';
-import { API, sameOrigin, memberPageUrl, memberApi } from './member-api';
+import { API, sameOrigin, memberPageUrl, memberApi, sessionIsActive, clearSessionActive } from './member-api';
 import './experience.css';
 import LandingHero, { PublicGuide } from './LandingHero';
 import './landing.css';
@@ -128,7 +128,12 @@ export default function Experience() {
   const [gate, setGate] = useState(null);
   async function refreshMember() {
     if (!sameOrigin) return;
-    const next = await memberApi('/api/member/me');
+    let next = await memberApi('/api/member/me');
+    if (next.user && !sessionIsActive()) {
+      await memberApi('/api/auth/sign-out', {});
+      clearSessionActive();
+      next = { user: null, usage: null };
+    }
     if (member.user && next.user?.id !== member.user.id) {
       active.current?.abort(); ++serial.current; latest.current = null; setState({ status: 'idle' });
     }

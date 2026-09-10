@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import AccountPanel from './AccountPanel';
 import { Onboarding } from './MemberDashboard';
-import { memberApi, memberBase, memberPageUrl } from './member-api';
+import { memberApi, memberBase, memberPageUrl, sessionIsActive, clearSessionActive } from './member-api';
 import './experience.css';
 
 export default function AccountPage() {
@@ -10,7 +10,12 @@ export default function AccountPage() {
   const params = new URLSearchParams(location.search);
   const page = location.pathname.includes('/signup') ? 'signup' : location.pathname.includes('/login') ? 'login' : 'account';
   async function refresh() {
-    const next = await memberApi('/api/member/me');
+    let next = await memberApi('/api/member/me');
+    if (next.user && !sessionIsActive()) {
+      await memberApi('/api/auth/sign-out', {});
+      clearSessionActive();
+      next = { user: null, usage: null };
+    }
     if (next.user && !params.has('token') && (page !== 'account' || params.has('action'))) {
       const action = params.get('action');
       const destination = new URL(memberBase);

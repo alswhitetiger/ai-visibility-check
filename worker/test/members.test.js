@@ -33,7 +33,8 @@ function setup(t) {
   async function signup(email) {
     const r = await request('/api/auth/sign-up/email', { body: { name: 'Test', email, password: 'test-only-long-password' } });
     assert.equal(r.status, 200, await r.clone().text());
-    return { cookie: r.headers.getSetCookie().map(s=>s.split(';')[0]).join('; '), data: await r.json() };
+    const setCookies = r.headers.getSetCookie();
+    return { cookie: setCookies.map(s=>s.split(';')[0]).join('; '), setCookies, data: await r.json() };
   }
   return { env, sqlite, request, signup };
 }
@@ -41,6 +42,9 @@ test('email signup stores a hash, session works, wrong password fails and signou
   const { sqlite, request, signup } = setup(t);
   const a = await signup('alpha@example.test');
   assert.ok(a.cookie);
+  const sessionCookie = a.setCookies.find(value => value.includes('session_token='));
+  assert.ok(sessionCookie);
+  assert.doesNotMatch(sessionCookie, /;\s*(?:Max-Age|Expires)=/i);
   assert.notEqual(sqlite.prepare('SELECT password FROM account').get().password, 'test-only-long-password');
   assert.equal((await (await request('/api/member/me', a)).json()).user.email, 'alpha@example.test');
   assert.equal((await request('/api/auth/sign-in/email', { body: { email: 'alpha@example.test', password: 'wrong-password' } })).status, 401);

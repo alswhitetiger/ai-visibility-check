@@ -13,6 +13,23 @@ const json = (data, status, origin) =>
     },
   });
 
+// 인증 쿠키를 브라우저 세션 쿠키로 바꾼다. 브라우저를 닫으면 로그인도 끝난다.
+function browserSessionCookies(response) {
+  const headers = new Headers(response.headers);
+  const cookies = typeof headers.getSetCookie === 'function' ? headers.getSetCookie() : [];
+  if (!cookies.length) return response;
+  headers.delete('set-cookie');
+  for (let cookie of cookies) {
+    const isSession = /^[^=]*better-auth\.(?:session_token|session_data|account_data)(?:\.\d+)?=/i.test(cookie);
+    const isDeletion = /;\s*Max-Age=0(?:;|$)/i.test(cookie);
+    if (isSession && !isDeletion) {
+      cookie = cookie.replace(/;\s*Max-Age=[^;]*/ig, '').replace(/;\s*Expires=[^;]*/ig, '');
+    }
+    headers.append('set-cookie', cookie);
+  }
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function corsOrigin(request, env) {
   const origin = request.headers.get('Origin') || '';
   if (/^chrome-extension:\/\/[a-z]{32}$/.test(origin)) return origin;
@@ -305,7 +322,7 @@ export default {
       }
       if (pathname.startsWith('/api/auth/')) {
         if (!env.AUTH_SECRET) return json({ message: '로그인 설정을 준비 중입니다.' }, 503, origin);
-        return await createAuth(env).handler(request);
+        return browserSessionCookies(await createAuth(env).handler(request));
       }
       if (pathname === '/api/member/config') return json({ providers: providerStatus(env), emailReady: !!env.AUTH_SECRET, emailVerification: !!(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM), loginUrl: env.AUTH_BASE_URL + '/ai-visibility-check/signup/' }, 200, origin);
       if (pathname.startsWith('/api/member/')) {

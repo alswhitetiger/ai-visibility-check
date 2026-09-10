@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { memberApi, sameOrigin, loginUrl } from './member-api';
+import { memberApi, sameOrigin, loginUrl, markSessionActive, clearSessionActive } from './member-api';
 import { HistorySparkline, Onboarding, ScoreSummary } from './MemberDashboard';
 import './account.css';
 
@@ -34,7 +34,8 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
         await memberApi('/api/auth/reset-password', { newPassword: fields.password, token: new URLSearchParams(location.search).get('token') });
         window.history.replaceState({}, '', location.pathname + '#account'); setMode('login'); setMessage('비밀번호를 변경했어요. 다시 로그인해 주세요.'); return;
       }
-      await memberApi(mode === 'signup' ? '/api/auth/sign-up/email' : '/api/auth/sign-in/email', { email: fields.email, password: fields.password, ...(mode === 'signup' ? { name: fields.name } : {}), callbackURL });
+      await memberApi(mode === 'signup' ? '/api/auth/sign-up/email' : '/api/auth/sign-in/email', { email: fields.email, password: fields.password, rememberMe: false, ...(mode === 'signup' ? { name: fields.name } : {}), callbackURL });
+      markSessionActive();
       if (mode === 'signup') sessionStorage.setItem('shop-check:onboarding', '1');
       if (mode === 'signup' && config.emailVerification) setMessage('이메일에 보낸 확인 링크를 눌러 가입을 완료해 주세요.');
       await onRefresh();
@@ -47,12 +48,13 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
   }, []);
   async function social(provider, link = false) {
     await act(async () => {
+      markSessionActive();
       const data = await memberApi(link ? '/api/auth/link-social' : '/api/auth/sign-in/social', { provider, callbackURL, errorCallbackURL: callbackURL, disableRedirect: true });
       if (data.url) location.assign(data.url);
     });
   }
   return <section id="account" className="panel account-panel" aria-label="회원과 내 사이트">
-    <div className="section-heading"><div><p className="eyebrow">내 가게의 개선 과정을 한곳에</p><h2>{user ? `${user.name}님의 작업 공간` : '로그인하고 검사 기록을 모아 보세요'}</h2></div>{user && <button className="button secondary small" disabled={busy} onClick={() => act(async () => { await memberApi('/api/auth/sign-out', {}); await onRefresh(); })}>로그아웃</button>}</div>
+    <div className="section-heading"><div><p className="eyebrow">내 가게의 개선 과정을 한곳에</p><h2>{user ? `${user.name}님의 작업 공간` : '로그인하고 검사 기록을 모아 보세요'}</h2></div>{user && <button className="button secondary small" disabled={busy} onClick={() => act(async () => { await memberApi('/api/auth/sign-out', {}); clearSessionActive(); await onRefresh(); })}>로그아웃</button>}</div>
     {!sameOrigin ? <><p>회원가입과 내 사이트 관리는 가게 체크의 로그인 페이지에서 이용할 수 있어요.</p><a className="button primary" href={loginUrl}>로그인 / 회원가입 →</a></> : !user ? <>
       <p className="muted">내 사이트를 저장하고 최근 90일의 검사 기록을 확인하세요. 계정당 하루 20회, 한국 시간 자정에 초기화됩니다.</p>
       <div className="account-tabs"><button className={'button '+(mode === 'login' ? 'primary' : 'secondary')} onClick={() => { setMode('login'); setMessage(''); }}>이메일 로그인</button><button className={'button '+(mode === 'signup' ? 'primary' : 'secondary')} onClick={() => { setMode('signup'); setMessage(''); }}>이메일 회원가입</button></div>
