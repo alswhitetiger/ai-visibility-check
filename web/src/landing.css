@@ -52,3 +52,9 @@ body { background: #fafbf7; }
 @media print { .platform-guide { display: none; } }
 .guide-steps article > span { flex: 0 0 22px; white-space: nowrap; }
 
+
+.scan-fallback { margin: 16px 0; text-align: left; overflow-wrap: anywhere; }
+.scan-fallback h3, .scan-fallback h4 { margin: 12px 0 8px; }
+.scan-fallback p, .scan-fallback li { font-size: 14px; line-height: 1.7; }
+.scan-fallback ol { padding-left: 22px; }
+.scan-fallback .button { white-space: normal; }

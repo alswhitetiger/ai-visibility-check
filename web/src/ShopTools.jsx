@@ -16,7 +16,7 @@ export function ObservedInfo({ data }) {
   return <section className="panel observed"><p className="eyebrow">점수의 바탕이 된 내용</p><h2>이 페이지에서 읽힌 정보</h2>
     <p className="muted">검사기가 HTML 원본에서 읽은 내용입니다. 실제 AI의 인식 결과나 내용의 사실 여부를 검증한 것은 아닙니다.</p>
     <dl>{rows.map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-    <details><summary>읽힌 글과 이미지 설명 예시</summary><p className="observed-excerpt">{o.textExcerpt || '원본에서 본문 글을 찾지 못했어요.'}</p>{o.images.samples.length > 0 && <ul>{o.images.samples.map((s,i)=><li key={i}>{s}</li>)}</ul>}<p className="muted">본문은 앞부분 최대 350자, 이미지 설명은 최대 3개만 보여드려요.</p></details>
+    <details><summary>읽힌 글과 이미지 설명 예시</summary><p className="observed-excerpt">{o.textExcerpt || '원본에서 본문 글을 찾지 못했어요.'}</p>{(o.images.samples || []).length > 0 && <ul>{o.images.samples.map((s,i)=><li key={i}>{s}</li>)}</ul>}<p className="muted">본문은 앞부분 최대 350자, 이미지 설명은 최대 3개만 보여드려요.</p></details>
   </section>;
 }
 

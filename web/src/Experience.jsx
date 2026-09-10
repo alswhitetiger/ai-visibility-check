@@ -160,7 +160,7 @@ export default function Experience() {
     else if (action === 'project' || action === 'research') openReference(action);
     return () => { alive = false; active.current?.abort(); };
   }, []);
-  useEffect(() => { if (state.status === 'done') { const report = document.getElementById('report'); report?.focus({ preventScroll: true }); report?.scrollIntoView({ block: 'start' }); } }, [state.status]);
+  useEffect(() => { if (state.status === 'done' && !state.data?.pageSkipped) { const report = document.getElementById('report'); report?.focus({ preventScroll: true }); report?.scrollIntoView({ block: 'start' }); } }, [state.status]);
 
   async function access(intent) {
     if (sameOrigin) {
@@ -173,7 +173,10 @@ export default function Experience() {
         return false;
       }
     }
-    setGate(intent); return false;
+    if (intent.action === 'scan') {
+      setState({ status: 'error', code: 'LOGIN_REQUIRED', target: intent.url, message: '실제 사이트 검사는 로그인 후 이용할 수 있어요. 아래에서 로그인하거나 확장프로그램 사용 방법을 확인하세요.' });
+    } else setGate(intent);
+    return false;
   }
   async function openMember() {
     if (await access({ action: 'account' })) location.assign(memberPageUrl('account'));
@@ -218,10 +221,23 @@ export default function Experience() {
   }
   return <div className="app-shell">
     <nav className="topbar"><a className="brand" href={import.meta.env.BASE_URL}><span className="brand-mark" aria-hidden="true">✓</span>가게 체크<span className="brand-en">AI Visibility Check</span></a><div className="nav-links"><a href="#public-guide">수정 방법</a><a href="#how-it-works">Q&A</a></div><a href={memberPageUrl("account")} onClick={e=>{e.preventDefault();openMember();}}>{member.user ? "내 사이트" : "로그인 / 회원가입"}</a></nav>
-    <LandingHero url={url} setUrl={setUrl} scan={scan} example={example} loading={state.status === 'loading'} limit={member.usage?.limit || 20} />
+    <LandingHero url={url} setUrl={setUrl} scan={scan} example={example} loading={state.status === 'loading'} limit={member.usage?.limit || 20} >
+      {(state.status === 'error' || (state.status === 'done' && state.data?.pageSkipped)) && <section className="notice scan-fallback" role="alert" aria-label="검사 실패 안내">
+        <h3>{state.data?.pageSkipped ? '사이트의 접근 규칙을 확인하지 못했거나 접근이 제한됐어요' : failureHelp(state.code).title}</h3>
+        <p>{state.data?.pageSkipped ? '서버에서 페이지를 검사하지 못했습니다. 점수를 계산하지 않았습니다.' : state.message}</p>
+        {state.code === 'LOGIN_REQUIRED' && <p><a className="button secondary" href={memberPageUrl('login', { action: 'scan', url: state.target })}>로그인하고 검사하기</a></p>}
+        <h4>확장프로그램으로 현재 페이지 확인하기</h4>
+        <p>주소 검사로 확인할 수 없다면 Chrome에서 직접 연 쇼핑몰 페이지의 제목·설명·이미지 정보를 확인할 수 있어요. 로그인·성인인증은 해당 쇼핑몰에서 직접 완료해 주세요.</p>
+        <ol><li>아래 ZIP 파일을 다운로드하고 압축을 풀어 주세요.</li><li>Chrome 주소창에 chrome://extensions를 입력하고 개발자 모드를 켜세요.</li><li>‘압축해제된 확장 프로그램을 로드합니다’를 눌러 압축을 푼 폴더를 선택하세요.</li><li>검사할 쇼핑몰 페이지에서 확장프로그램을 열고 ‘현재 탭 읽기’를 누르세요. 추출 내용을 확인한 뒤 점수 보기 버튼을 누르세요.</li></ol>
+        <a className="button secondary" href={`${import.meta.env.BASE_URL}ai-visibility-check-extension-connected.zip`} download>확장프로그램 ZIP 다운로드 ↗</a>
+        <p className="muted">참고용 검사입니다. 비밀번호·쿠키는 읽지 않으며, 점수 보기를 누르면 추출한 페이지 정보가 검사 서버로 전송됩니다. 개인정보가 보이는 계정·주문 페이지에서는 사용하지 마세요.</p>
+        <details><summary>확장프로그램을 사용할 수 없나요?</summary><ScreenshotGuide url={state.target || state.data?.url} /></details>
+        {state.target && failureHelp(state.code).retry && <button className="text-button" onClick={() => scan(state.target)}>다시 시도</button>}
+        <button className="text-button" onClick={() => example()}>예시 결과 보기 →</button>
+      </section>}
+    </LandingHero>
     {gate && <MembershipGate intent={gate} onClose={()=>setGate(null)} />}
     {state.status === 'loading' && <div className="notice loading" role="status"><span className="spinner"/><div><b>페이지의 기본 정보를 확인하고 있어요</b><p>사이트 응답과 AI 질의에 따라 최대 1분 정도 걸릴 수 있어요.</p></div><button className="text-button" onClick={() => { ++serial.current; active.current?.abort(); setState({status:'idle'}); }}>취소</button></div>}
-    {state.status === 'error' && <div className="notice" role="alert"><h3>{failureHelp(state.code).title}</h3><p>{state.message}</p><p>{failureHelp(state.code).next}</p>{['LOGIN_WALL','FETCH_FAILED','BLOCKED_BY_SITE','ROBOTS_UNAVAILABLE'].includes(state.code) && <div className="panel"><h3>자동 검사가 어려울 때 확인하는 방법</h3><p>로그인·성인인증·접근 제한이 있는 페이지는 서버가 대신 로그인하지 않습니다. 아래 방법으로 확인할 수 있습니다.</p>{/^https?:\/\//i.test(state.target || '') && <a href={state.target} target="_blank" rel="noreferrer">해당 사이트를 직접 열기 ↗</a>}<ol><li>쇼핑몰에서 직접 로그인·성인인증을 완료하세요.</li><li>로그인한 페이지에서 확장프로그램으로 현재 탭을 검사하세요.</li><li>확장프로그램을 사용할 수 없으면 메인·로그인·상품 페이지를 캡처해 준비하세요.</li></ol><ScreenshotGuide url={state.target} /></div>}{state.target && failureHelp(state.code).retry && <button className="button secondary" onClick={() => scan(state.target)}>다시 시도</button>}<button className="text-button" onClick={() => example()}>예시 결과 보기 →</button>{latest.current && <button className="text-button" onClick={() => setState({status:'done',data:latest.current})}>직전 결과 다시 보기</button>}</div>}
     {state.status === 'done' && <Report data={state.data} previous={state.previous} onScan={scan} onExample={() => example(!state.data.exampleAfter)} user={member.user} />}
     {state.status === 'idle' && <section className="overview"><article><span>01</span><h2>AI가 읽을 정보</h2><p>AI 접근 규칙, 브랜드 소개 등<br/>기계가 읽을 기본 정보를 확인해요.</p></article><article><span>02</span><h2>고객이 볼 정보</h2><p>페이지 설명, 모바일 설정 등<br/>고객 안내에 필요한 항목을 확인해요.</p></article><article><span>03</span><h2>고치는 방법</h2><p>보완할 항목과 수정 안내를 보고<br/>다시 검사해 변화를 확인해요.</p></article></section>}
     <PublicGuide example={example} />
