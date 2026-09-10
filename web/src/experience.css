@@ -121,6 +121,25 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; bac
 @media (max-width: 700px) { .comparison li { display: grid; gap: 5px; } .comparison li span { white-space: normal; } .checklist-heading h3 { font-size: 18px; } }
 @media (max-width: 380px) { .score-grid { grid-template-columns: 1fr; } .app-shell { padding: 0 15px; } .intro h1 { font-size: 27px; } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+/* Report and utility screens use the same teal / coral language as the landing page. */
+.report-badge { background: #f9e8e2; color: #a44432; border-color: #f0c9bd; border-radius: 999px; }
+.example-notice { border-color: #d6e5d9; background: #edf3ec; }
+.score-card, .fix-card, .panel, .notice { border-radius: 16px; background: #fffefa; box-shadow: 0 8px 22px rgba(53,67,61,.06); }
+.score-card progress { background: #e8eee9; }
+.score-card progress::-webkit-progress-bar { background: #e8eee9; }
+.score-card progress::-webkit-progress-value, progress::-webkit-progress-value { background: #d95740; }
+.score-card progress::-moz-progress-bar, progress::-moz-progress-bar { background: #d95740; }
+.fix-number { border-radius: 50%; background: #edf3ec; color: #365c4c; }
+.fix-card summary, .text-button, a { color: #365c4c; }
+.comparison { border-color: #c5ddd0; background: #f0f6ef; }
+.status.fix { background: #f9e8e2; color: #a44432; }
+.status.info { background: #eef2ed; color: #607071; }
+.onboarding-backdrop { background: rgba(16,42,45,.68); backdrop-filter: blur(5px); }
+.onboarding-card { border: 1px solid #dfe6df; border-radius: 22px; background: #fffefa; box-shadow: 0 28px 90px rgba(18,42,43,.28); }
+.onboarding-steps li::before { background: #edf3ec; color: #365c4c; }
+.observed-excerpt, pre { background: #f0f5ee; border-color: #dce8df; color: #365c4c; }
+.shop-builder { border-color: #c8ddd0; background: #fffefa; }
+.shop-builder input:not([type=checkbox]), .shop-builder textarea, .shop-builder select { border-color: #cbd9d1; background: #fbfdf9; }
 @media print {
   body { background: white; color: #111; font-size: 11pt; } .app-shell { max-width: none; padding: 0; }
   .topbar,.intro,.input-panel,.about,.public-list,.site-footer,.actions,.print-button,.recheck,.copy-row { display: none !important; }
