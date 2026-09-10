@@ -47,14 +47,16 @@ function Copy({ text, label = '코드 예시 복사' }) {
 }
 
 function DownloadResult({ data }) {
+  const [confirmed, setConfirmed] = useState(false);
   function download() {
+    if (!confirmed) return;
     const safe = { ...data, ai: data.ai ? { ...data.ai, answer: undefined } : undefined };
     const blob = new Blob([JSON.stringify(safe, null, 2)], { type: 'application/json;charset=utf-8' });
     const href = URL.createObjectURL(blob); const a = document.createElement('a');
     a.href = href; a.download = `shop-check-${new Date(data.scannedAt || Date.now()).toISOString().slice(0,10)}.json`;
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(href);
   }
-  return <button className="button secondary small" onClick={download}>결과 파일 다운로드</button>;
+  return <div className="download-result"><p>다운로드 파일에는 검사한 URL, 점수, 점검 항목이 포함됩니다. 계정·주문·개인정보가 포함된 주소라면 파일을 다른 사람에게 전달하지 마세요.</p><label><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} /> 안내를 확인했어요.</label><button className="button secondary small" onClick={download} disabled={!confirmed}>결과 파일 다운로드</button></div>;
 }
 
 function FixCard({ check, index }) {

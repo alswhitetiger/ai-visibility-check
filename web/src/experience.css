@@ -141,6 +141,10 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; bac
 .shop-builder { border-color: #c8ddd0; background: #fffefa; }
 .shop-builder input:not([type=checkbox]), .shop-builder textarea, .shop-builder select { border-color: #cbd9d1; background: #fbfdf9; }
 .result-save-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.download-result { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid #dce8df; border-radius: 12px; background: #f0f5ee; }
+.download-result p { margin: 0; color: #607071; font-size: 12px; line-height: 1.6; }
+.download-result label { display: flex; align-items: center; gap: 7px; color: #365c4c; font-size: 12px; font-weight: 700; }
+.download-result input { accent-color: #d95740; }
 @media print {
   body { background: white; color: #111; font-size: 11pt; } .app-shell { max-width: none; padding: 0; }
   .topbar,.intro,.input-panel,.about,.public-list,.site-footer,.actions,.print-button,.recheck,.copy-row { display: none !important; }
