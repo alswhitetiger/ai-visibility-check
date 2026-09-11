@@ -14,6 +14,8 @@ ALLOWED_ORIGINS = "http://localhost:5173,https://alswhitetiger.github.io"
 DAILY_SCAN_LIMIT = "400"
 ACCOUNT_DAILY_LIMIT = "20"
 AUTH_REQUIRED = "true"
+ANON_SCAN_ENABLED = "true"
+ANON_DAILY_LIMIT = "1"
 AUTH_BASE_URL = "https://ai-visibility.ai-visibility-worker.workers.dev"
 CACHE_TTL_HOURS = "24"
 

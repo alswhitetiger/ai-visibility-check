@@ -41,6 +41,12 @@ function corsOrigin(request, env) {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+async function anonymousBucket(request) {
+  const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || 'unknown';
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('ai-visibility:anon:v1:' + ip));
+  return [...new Uint8Array(digest)].slice(0, 12).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // D1로 일일 사용량을 센다. 한도 초과 여부만 돌려준다.
 async function bump(env, key, limit) {
   const now = Date.now();
@@ -119,7 +125,8 @@ function extensionResult(input) {
 
 async function handleScan(request, env, origin) {
   const session = await sessionOf(request, env);
-  if (env.AUTH_REQUIRED === 'true' && !session) return json({ error: 'LOGIN_REQUIRED', message: '로그인하면 검사와 기록 저장을 이용할 수 있어요.' }, 401, origin);
+  const anonymousAllowed = env.ANON_SCAN_ENABLED === 'true' && request.method === 'POST';
+  if (env.AUTH_REQUIRED === 'true' && !session && !anonymousAllowed) return json({ error: 'LOGIN_REQUIRED', message: '로그인하면 검사와 기록 저장을 이용할 수 있어요.' }, 401, origin);
   if (env.AUTH_REQUIRED === 'true' && request.method !== 'POST') return json({ error: 'METHOD', message: '새 화면에서 다시 검사해 주세요.' }, 405, origin);
   const params = new URL(request.url).searchParams;
   const target = normalize(params.get('url'));
@@ -147,6 +154,10 @@ async function handleScan(request, env, origin) {
   const isJudge = !!env.JUDGE_CODE && code === env.JUDGE_CODE;
 
   if (!isJudge && !session) {
+    if (anonymousAllowed) {
+      const personal = await bump(env, 'anon:' + today() + ':' + await anonymousBucket(request), Number(env.ANON_DAILY_LIMIT || 1));
+      if (personal.exceeded) return json({ error: 'ANON_LIMIT', message: '로그인 없이 이용할 수 있는 오늘의 검사 횟수를 사용했어요. 로그인하면 계정 기록과 추가 검사를 이용할 수 있습니다.' }, 429, origin);
+    }
     const day = today();
     const global = await bump(env, 'global:' + day, Number(env.DAILY_SCAN_LIMIT || 400));
     if (global.exceeded) {
@@ -308,13 +319,16 @@ export default {
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         const expected = env.AUTH_BASE_URL || new URL(request.url).origin;
         const extensionRequest = pathname === '/api/extension/scan' && /^chrome-extension:\/\/[a-z]{32}$/.test(request.headers.get('Origin') || '');
-        if (!extensionRequest && request.headers.get('Origin') !== expected) return json({ message: '허용되지 않은 요청입니다.' }, 403, origin);
+        const requestOrigin = request.headers.get('Origin') || '';
+        const allowedApiOrigin = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).includes(requestOrigin);
+        const publicScanRequest = pathname === '/api/scan' && allowedApiOrigin;
+        if (!extensionRequest && !publicScanRequest && requestOrigin !== expected) return json({ message: '허용되지 않은 요청입니다.' }, 403, origin);
       }
       if (pathname.startsWith('/api/auth/')) {
         if (!env.AUTH_SECRET) return json({ message: '로그인 설정을 준비 중입니다.' }, 503, origin);
         return browserSessionCookies(await createAuth(env).handler(request));
       }
-      if (pathname === '/api/member/config') return json({ providers: providerStatus(env), emailReady: !!env.AUTH_SECRET, emailVerification: !!(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM), loginUrl: env.AUTH_BASE_URL + '/ai-visibility-check/signup/' }, 200, origin);
+      if (pathname === '/api/member/config') return json({ providers: providerStatus(env), emailReady: !!env.AUTH_SECRET, emailVerification: !!(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM), anonymousScan: env.ANON_SCAN_ENABLED === 'true', anonymousDailyLimit: Number(env.ANON_DAILY_LIMIT || 1), loginUrl: env.AUTH_BASE_URL + '/ai-visibility-check/signup/' }, 200, origin);
       if (pathname.startsWith('/api/member/')) {
         const session = await sessionOf(request, env);
         if (pathname === '/api/member/me') return json({ user: session ? { id: session.user.id, name: session.user.name, email: session.user.email, emailVerified: session.user.emailVerified } : null, usage: session ? await quota(env, session.user.id) : null }, 200, origin);
@@ -322,7 +336,7 @@ export default {
         return await memberRoute(request, env, session.user, json, origin);
       }
       if (pathname === '/api/health') {
-        return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now() }, 200, origin);
+        return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now(), anonymousScan: env.ANON_SCAN_ENABLED === 'true', aiProviders: { gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY, anthropic: !!env.ANTHROPIC_API_KEY }, cache: { enabled: !!env.DB, ttlHours: Number(env.CACHE_TTL_HOURS || 24) } }, 200, origin);
       }
       if (pathname === '/api/extension/scan' && request.method === 'POST') {
         const body = await request.json().catch(() => null);

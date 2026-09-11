@@ -126,7 +126,7 @@ function Report({ data, previous, onScan, onExample, user }) {
     {blocked ? <div className="notice"><p>{data.skipReason === 'robots_unavailable' ? '사이트의 접근 규칙(robots.txt)을 읽지 못해 검사를 멈췄습니다. 허용 여부를 모르는 상태를 통과로 처리하지 않습니다.' : '사이트가 게시한 접근 제한에 따라 페이지를 가져오지 않았습니다.'}</p><p>다음 할 일: 운영 담당자에게 해당 주소의 접근 규칙과 robots.txt 응답을 확인해 달라고 요청하세요. 접근 상태를 확인한 뒤 다시 검사하세요.</p>{data.robots && <p>게시된 규칙상 AI {data.robots.answerTotal}종 중 {data.robots.answerAllowed}종은 입력한 주소에 접근 허용으로 표시됩니다. 실제 접근 성공 여부는 별개입니다.</p>}</div> : <>
       <div className="score-grid">{[['AI가 읽을 기본 정보', data.aiScore, '접근 규칙 · 브랜드 정보 · 원본 텍스트'], ['고객에게 보여줄 기본 정보', data.uxScore, '페이지 소개 · 모바일 설정 · 이미지 설명']].map(([name,score,hint]) => <section className="score-card" key={name}><p>{name}</p><div><strong>{score ?? '—'}</strong><span>/ 100</span></div><progress value={score ?? 0} max="100" aria-label={name} /><p className="muted">{hint}</p></section>)}</div>
       <p className="measurement-note">점수는 이 페이지의 기본 설정을 점검한 값입니다. 실제 AI 검색 노출·추천 여부나 구매 성공률은 측정하지 않습니다.{unknown > 0 && ` 미확인 ${unknown}개 항목은 점수에서 제외했습니다.`}</p>
-      {data.shared && <p className="notice">공유된 검사 결과입니다. 현재 사이트 상태와 다를 수 있습니다. 링크 만료: {dateOf(data.shareExpiresAt)}</p>}
+      {data.shared && <section className="notice shared-report"><b>공유된 검사 보고서</b><p>이 결과는 링크를 받은 사람이 확인할 수 있도록 저장된 시점의 보고서입니다. 현재 사이트 상태와 다를 수 있습니다.</p><p className="muted">링크 만료: {dateOf(data.shareExpiresAt)}</p><button className="button secondary small" onClick={() => { window.history.replaceState({}, '', import.meta.env.BASE_URL); onExample(); }}>내 사이트도 3분 체험하기 ↗</button></section>}
       <Comparison data={data} previous={previous} />
       <ObservedInfo data={data} />
       <section className="next-steps"><div className="section-heading"><div><p className="eyebrow">이제 무엇을 하면 되나요?</p><h2>{fixes.length ? '먼저 이 부분부터 고쳐 보세요' : '확인한 기본 항목을 통과했어요'}</h2></div>{fixes.length > 0 && <span className="muted">보완 {fixes.length}개 중 우선 {Math.min(fixes.length,3)}개</span>}</div>
@@ -187,19 +187,24 @@ export default function Experience() {
   useEffect(() => { if (state.status === 'done' && !state.data?.pageSkipped) { const report = document.getElementById('report'); report?.focus({ preventScroll: true }); report?.scrollIntoView({ block: 'start' }); } }, [state.status]);
 
   async function access(intent) {
+    if (!sameOrigin && intent.action === 'scan') return true;
     if (sameOrigin) {
       try {
         const next = await memberApi('/api/member/me');
         setMember(next);
         if (next.user) return true;
+        if (intent.action === 'scan') {
+          const config = await memberApi('/api/member/config');
+          if (config.anonymousScan) return true;
+        }
       } catch {
         setState({ status: 'error', message: '로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.' });
         return false;
       }
     }
-    if (intent.action === 'scan') {
+    if (intent.action === 'scan' && sameOrigin) {
       setState({ status: 'error', code: 'LOGIN_REQUIRED', target: intent.url, message: '실제 사이트 검사는 로그인 후 이용할 수 있어요. 아래에서 로그인하거나 확장프로그램 사용 방법을 확인하세요.' });
-    } else setGate(intent);
+    } else if (intent.action !== 'scan') setGate(intent);
     return false;
   }
   async function openMember() {

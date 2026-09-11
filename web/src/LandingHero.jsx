@@ -10,10 +10,10 @@ export default function LandingHero({ url, setUrl, scan, example, loading, limit
       <form className="hero-search" onSubmit={e => { e.preventDefault(); scan(url); }}>
         <label htmlFor="shop-url">쇼핑몰 또는 상품 페이지 주소</label>
         <div><input id="shop-url" required type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="myshop.cafe24.com" value={url} onChange={e => setUrl(e.target.value)} /><button className="button primary" disabled={loading}>{loading ? '검사 중…' : '검사 시작 ↗'}</button></div>
-        <p>실제 검사는 로그인 후 · 계정당 하루 {limit}회</p><small className="hero-limit-note">로그인·성인인증 뒤의 내용은 서버가 대신 로그인하지 않아 확인할 수 없습니다. 공개 페이지가 있으면 공개 영역을 먼저 검사합니다.</small>
+        <p>로그인 없이 하루 1회 체험 · 로그인하면 계정당 하루 {limit}회</p><small className="hero-limit-note">로그인·성인인증 뒤의 내용은 서버가 대신 로그인하지 않아 확인할 수 없습니다. 공개 페이지가 있으면 공개 영역을 먼저 검사합니다.</small>
       </form>
       {children}
-      <button className="hero-example" onClick={() => example()}>가입 없이 결과 먼저 둘러보기 <span>→</span></button>
+      <button className="hero-example" onClick={() => example()}>심사위원 3분 체험 · 예시 결과 보기 <span>→</span></button>
     </div>
     <div className="preview-stage" aria-label="가상 쇼핑몰 검사 결과 미리보기">
       <div className="preview-caption"><span>YOUR NEXT STEP, MADE CLEAR.</span><span>가상 예시</span></div>
