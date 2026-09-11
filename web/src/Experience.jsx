@@ -13,6 +13,7 @@ import { failureHelp, aiFailureHelp } from './failure-help';
 import ScreenshotGuide from './ScreenshotGuide';
 import { readExtensionResult } from './extension-result';
 import { copyText } from './ui-utils';
+import AiDraft from './AiDraft';
 
 const VERSION = '2026-09-09.1';
 const STORAGE = 'shop-check:last:';
@@ -129,6 +130,7 @@ function Report({ data, previous, onScan, onExample, user }) {
       {data.shared && <section className="notice shared-report"><b>공유된 검사 보고서</b><p>이 결과는 링크를 받은 사람이 확인할 수 있도록 저장된 시점의 보고서입니다. 현재 사이트 상태와 다를 수 있습니다.</p><p className="muted">링크 만료: {dateOf(data.shareExpiresAt)}</p><button className="button secondary small" onClick={() => { window.history.replaceState({}, '', import.meta.env.BASE_URL); onExample(); }}>내 사이트도 3분 체험하기 ↗</button></section>}
       <Comparison data={data} previous={previous} />
       <ObservedInfo data={data} />
+      {!data.shared && !data.example && <AiDraft key={data.url + ':' + data.scannedAt} data={data} />}
       <section className="next-steps"><div className="section-heading"><div><p className="eyebrow">이제 무엇을 하면 되나요?</p><h2>{fixes.length ? '먼저 이 부분부터 고쳐 보세요' : '확인한 기본 항목을 통과했어요'}</h2></div>{fixes.length > 0 && <span className="muted">보완 {fixes.length}개 중 우선 {Math.min(fixes.length,3)}개</span>}</div>
         {fixes.length ? fixes.slice(0,3).map((c,i) => <FixCard check={c} index={i} key={c.id} />) : <p>실제 휴대폰 화면과 구매 동작도 직접 확인해 보세요. 기본 검사 통과가 모든 기능의 정상 동작을 뜻하지는 않습니다.</p>}
         {!data.example && !data.shared && <div className="recheck"><p><b>사이트를 수정했나요?</b><br/><span className="muted">다시 검사하면 이 브라우저의 이전 결과와 비교합니다. 재검사는 일일 이용 횟수에 포함됩니다.</span></p><button className="button secondary" onClick={() => onScan(data.url, true)}>수정 후 다시 검사</button></div>}
