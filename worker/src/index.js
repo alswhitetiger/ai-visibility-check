@@ -3,6 +3,7 @@ import { parseHTML } from 'linkedom';
 import { diagnose, QUADRANT_LABEL, DIAGNOSIS_VERSION } from './diagnose.js';
 import { askAI, brandProbePrompt } from './ai.js';
 import { generateDraft } from './draft.js';
+import { generateQuestions } from './questions.js';
 import { createAuth, sessionOf, providerStatus } from './auth.js';
 import { quota, reserveScan, releaseScan, saveHistory, memberRoute, publicUrl, readSharedReport } from './members.js';
 
@@ -322,7 +323,7 @@ export default {
         const extensionRequest = pathname === '/api/extension/scan' && /^chrome-extension:\/\/[a-z]{32}$/.test(request.headers.get('Origin') || '');
         const requestOrigin = request.headers.get('Origin') || '';
         const allowedApiOrigin = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).includes(requestOrigin);
-        const publicScanRequest = ['/api/scan', '/api/draft'].includes(pathname) && allowedApiOrigin;
+        const publicScanRequest = ['/api/scan', '/api/draft', '/api/questions'].includes(pathname) && allowedApiOrigin;
         if (!extensionRequest && !publicScanRequest && requestOrigin !== expected) return json({ message: '허용되지 않은 요청입니다.' }, 403, origin);
       }
       if (pathname.startsWith('/api/auth/')) {
@@ -352,21 +353,22 @@ export default {
       if (pathname === '/api/scan') {
         return await handleScan(request, env, origin);
       }
-      if (pathname === '/api/draft') {
+      if (pathname === '/api/draft' || pathname === '/api/questions') {
+        const field = pathname === '/api/questions' ? 'questions' : 'draft';
         if (request.method !== 'POST') return json({ message: 'POST 요청이 필요합니다.' }, 405, origin);
         const target = normalize(new URL(request.url).searchParams.get('url'));
         if (!target) return json({ message: '공개 페이지 주소를 확인해 주세요.' }, 400, origin);
         const scan = await readCache(env, target.href, Number(env.CACHE_TTL_HOURS || 24));
         if (!scan || scan.pageSkipped) return json({ message: '먼저 이 페이지를 검사해 주세요. 검사 결과는 24시간 동안 사용할 수 있습니다.' }, 400, origin);
-        if (scan.draft) return json({ ...scan.draft, cached: true }, 200, origin);
+        if (scan[field]) return json({ ...scan[field], cached: true }, 200, origin);
         const usage = await bump(env, 'draft:' + today() + ':' + await anonymousBucket(request), 5);
-        if (usage.exceeded) return json({ message: '오늘 AI 초안 생성 한도 5회를 사용했습니다. 저장된 초안은 계속 볼 수 있습니다.' }, 429, origin);
+        if (usage.exceeded) return json({ message: '오늘 AI 초안·고객 질문 공동 한도 5회를 사용했습니다. 저장된 결과는 계속 볼 수 있습니다.' }, 429, origin);
         const global = await bump(env, 'draft-global:' + today(), 100);
         if (global.exceeded) return json({ message: '오늘 서비스의 AI 초안 한도에 도달했습니다.' }, 429, origin);
-        const draft = await generateDraft(env, scan);
+        const draft = await (field === 'questions' ? generateQuestions : generateDraft)(env, scan);
         if (draft.error) return json(draft, 503, origin);
         // 검사 유효기간을 연장하지 않고 같은 검사에 대한 초안을 재사용한다.
-        await env.DB.prepare("UPDATE scans SET result_json = ? WHERE url = ? AND json_extract(result_json, '$.scannedAt') = ?").bind(JSON.stringify({ ...scan, cached: false, draft }), target.href, scan.scannedAt).run();
+        await env.DB.prepare("UPDATE scans SET result_json = json_set(result_json, ?, json(?)) WHERE url = ? AND json_extract(result_json, '$.scannedAt') = ?").bind('$.' + field, JSON.stringify(draft), target.href, scan.scannedAt).run();
         return json(draft, 200, origin);
       }
       if (pathname === '/api/showcase') {

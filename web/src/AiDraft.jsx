@@ -23,7 +23,7 @@ export default function AiDraft({ data }) {
     catch { setMessage('자동 복사가 실패했습니다. 입력란에서 직접 복사해 주세요.'); }
   }
   return <section className="panel"><p className="eyebrow">페이지 정보 → AI 초안 → 직접 확인</p><h2>AI와 소개 문구 다듬기</h2>
-    <p>검사한 제목·소개·본문 일부를 AI에 보내 초안 3개를 만듭니다. 하루 5회 생성할 수 있으며 같은 검사의 초안은 재사용합니다.</p>
+    <p>검사한 제목·소개·본문 일부를 AI에 보내 초안 3개를 만듭니다. 고객 질문 검사와 합쳐 하루 5회이며 같은 검사의 초안은 재사용합니다.</p>
     <button className="button secondary" disabled={busy} onClick={generate}>{busy ? '초안 작성 중…' : draft ? '저장된 초안 다시 보기' : 'AI 수정안 3개 만들기'}</button>
     {draft && <><p className="muted">{draft.provider} / {draft.model} · {draft.cached ? '저장된 초안' : '생성한 초안'} · AI가 작성한 제안이므로 사실과 표현을 직접 확인하세요.</p>
       <div className="copy-row">{draft.options.map((option, i) => <button key={i} className="button secondary small" onClick={() => { setSelected({ ...option }); setConfirmed(false); setMessage(''); }}>초안 {i + 1}</button>)}</div>
