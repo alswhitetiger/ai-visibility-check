@@ -3,6 +3,10 @@ main = "src/index.js"
 compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Gemini API 호출의 출발 위치를 지원 지역에 가깝게 배치하기 위한 시험 설정.
+[placement]
+region = "gcp:us-west1"
+
 [assets]
 directory = "../web/dist"
 binding = "ASSETS"
