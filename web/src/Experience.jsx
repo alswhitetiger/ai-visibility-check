@@ -11,6 +11,7 @@ import FixChecklist from './FixChecklist';
 import PlatformGuide from './PlatformGuide';
 import { failureHelp, aiFailureHelp } from './failure-help';
 import ScreenshotGuide from './ScreenshotGuide';
+import { readExtensionResult } from './extension-result';
 
 const VERSION = '2026-09-09.1';
 const STORAGE = 'shop-check:last:';
@@ -107,6 +108,12 @@ function Comparison({ data, previous }) {
 }
 
 function Report({ data, previous, onScan, onExample, user }) {
+  if (data.browserExtracted) return <main id="report" tabIndex={-1}>
+    <h2>브라우저에서 읽은 참고 결과</h2><p className="muted target">{data.url}</p>
+    <p className="notice">확장프로그램이 읽은 제목·소개·헤딩·이미지 설명·가격 후보로 계산했습니다. 서버의 공개 페이지 검사와 기준이 다르며, 전체 점검 항목을 통과했다는 뜻이 아닙니다.</p>
+    <div className="score-grid">{[['AI 정보', data.aiScore], ['고객 정보', data.uxScore]].map(([label, score]) => <section className="score-card" key={label}><p>{label} 참고 점수</p><strong>{score}</strong><span> / 100</span></section>)}</div>
+    <ObservedInfo data={data} /><DownloadResult data={data} />
+  </main>;
   const blocked = data.pageSkipped;
   const checks = data.checks || [];
   const fixes = checks.filter(c => c.pass === false && c.weight > 0).sort((a,b) => b.weight-a.weight);
@@ -148,7 +155,7 @@ export default function Experience() {
       next = { user: null, usage: null };
     }
     if (member.user && next.user?.id !== member.user.id) {
-      active.current?.abort(); ++serial.current; latest.current = null; setState({ status: 'idle' });
+      active.current?.abort(); ++serial.current; setState({ status: 'idle' });
     }
     setMember(next);
   }
@@ -157,7 +164,6 @@ export default function Experience() {
   const [state, setState] = useState({ status: 'idle' });
   const active = useRef(null);
   const serial = useRef(0);
-  const latest = useRef(null);
   const dataUrl = name => `${import.meta.env.BASE_URL}data/${name}.json?v=${__BUILD_ID__}`;
   useEffect(() => {
     let alive = true;
@@ -165,9 +171,8 @@ export default function Experience() {
     const shared = params.get('url'), shareToken = params.get('share'), extensionResult = params.get('extensionResult'), action = params.get('action');
     if (extensionResult) {
       try {
-        const data = JSON.parse(decodeURIComponent(escape(atob(extensionResult))));
-        if (data?.browserExtracted && data.url) { setUrl(data.url); setState({ status: 'done', data, previous: null }); }
-        else throw new Error('확장프로그램 결과 형식이 올바르지 않습니다.');
+        const data = readExtensionResult(extensionResult);
+        setUrl(data.url); setState({ status: 'done', data, previous: null });
       } catch (e) { if (alive) setState({ status: 'error', message: e.message }); }
     } else
     if (shareToken) {
@@ -206,7 +211,7 @@ export default function Experience() {
     if (!await access({ action: 'history', id })) return;
     try {
       const data = await memberApi('/api/member/history?id='+encodeURIComponent(id));
-      latest.current = data; setState({ status: 'done', data: { ...data, cached: true } });
+      setState({ status: 'done', data: { ...data, cached: true } });
     } catch(e) { setState({ status: 'error', message: e.message }); }
   }
   async function scan(value, refresh = false) {
@@ -223,7 +228,7 @@ export default function Experience() {
       if (id !== serial.current) return;
       if (d.version !== VERSION) throw new Error('검사 서버를 업데이트하고 있습니다. 잠시 후 다시 시도하거나 예시 결과를 확인해 주세요.');
       const previous = readPrevious(d.url);
-      remember(d); latest.current = d;
+      remember(d);
       setState({ status: 'done', data: d, previous });
     } catch (e) { if (id === serial.current) setState({ status: 'error', code: e.name === 'AbortError' ? 'TIMEOUT' : e.code || 'NETWORK', target, message: e.name === 'AbortError' ? '검사 시간이 길어져 중단했습니다. 잠시 후 다시 시도해 주세요.' : e.message }); }
     finally { clearTimeout(timer); refreshMember().catch(() => {}); }

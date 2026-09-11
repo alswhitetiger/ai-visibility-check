@@ -18,7 +18,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { diagnose, DIAGNOSIS_VERSION } from '../worker/src/diagnose.js';
-import { brandProbePrompt } from '../worker/src/ai.js';
+import { askAI, brandProbePrompt } from '../worker/src/ai.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DATA = resolve(here, '../web/public/data');
@@ -30,31 +30,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function probe(brand, host) {
   if (!KEY) return null;
-  const { system, user } = brandProbePrompt(brand, host);
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-goog-api-key': KEY },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ role: 'user', parts: [{ text: user }] }],
-          generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
-        }),
-      }
-    );
-    if (!res.ok) {
-      console.log('    AI 실패', res.status);
-      return null;
-    }
-    const d = await res.json();
-    const text = d?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    return JSON.parse(text);
-  } catch (e) {
-    console.log('    AI 오류', e.message);
-    return null;
-  }
+  const result = await askAI({ GEMINI_API_KEY: KEY, GEMINI_MODEL: MODEL }, brandProbePrompt(brand, host));
+  if (result.ok) return result.json;
+  console.log('    AI 실패', result.tried.find(t => t.provider === 'gemini')?.kind);
+  return null;
 }
 
 const targets = JSON.parse(await readFile(resolve(here, 'targets.json'), 'utf8'));

@@ -8,13 +8,13 @@ export function ObservedInfo({ data }) {
     ['가게 이름', o.brand || '브랜드 데이터와 사이트 이름 태그에서 찾지 못했어요'],
     ['페이지 제목', o.title || '제목을 찾지 못했어요'],
     ['가게·페이지 소개', o.description || '페이지 소개 태그에서 찾지 못했어요'],
-    ['상품 가격', !data.isProductPage ? '일반 페이지입니다. 상품 페이지 주소를 넣으면 가격도 확인해요.' :
+    ['상품 가격', data.browserExtracted ? o.prices.filter(p => typeof p === 'string').join(', ') || '가격 후보를 찾지 못했어요' : !data.isProductPage ? '일반 페이지입니다. 상품 페이지 주소를 넣으면 가격도 확인해요.' :
       o.prices.length ? o.prices.map(p => `${p.value} ${p.currency || '(통화 미표기)'} · ${p.source}`).join('\n') :
       o.textPrices.length ? o.textPrices.join(', ')+' · 본문에서 발견한 금액 (판매가인지 확인 필요)' : '상품 데이터와 본문에서 가격을 찾지 못했어요'],
     ['이미지 설명', o.images.total ? `${o.images.total}개 이미지 중 ${o.images.described}개에 글 설명이 있어요` : '검사할 이미지가 없어요'],
   ];
   return <section className="panel observed"><p className="eyebrow">점수의 바탕이 된 내용</p><h2>이 페이지에서 읽힌 정보</h2>
-    <p className="muted">검사기가 HTML 원본에서 읽은 내용입니다. 실제 AI의 인식 결과나 내용의 사실 여부를 검증한 것은 아닙니다.</p>
+    <p className="muted">{data.browserExtracted ? '확장프로그램이 현재 브라우저 페이지에서 읽은 내용입니다.' : '검사기가 HTML 원본에서 읽은 내용입니다.'} 실제 AI의 인식 결과나 내용의 사실 여부를 검증한 것은 아닙니다.</p>
     <dl>{rows.map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
     <details><summary>읽힌 글과 이미지 설명 예시</summary><p className="observed-excerpt">{o.textExcerpt || '원본에서 본문 글을 찾지 못했어요.'}</p>{(o.images.samples || []).length > 0 && <ul>{o.images.samples.map((s,i)=><li key={i}>{s}</li>)}</ul>}<p className="muted">본문은 앞부분 최대 350자, 이미지 설명은 최대 3개만 보여드려요.</p></details>
   </section>;

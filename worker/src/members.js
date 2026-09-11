@@ -1,3 +1,5 @@
+import { publicUrl } from './public-web.js';
+export { publicUrl } from './public-web.js';
 const improvementTables = new WeakMap();
 async function ensureImprovements(env) {
   if (!improvementTables.has(env.DB)) improvementTables.set(env.DB, env.DB.prepare(`CREATE TABLE IF NOT EXISTS improvement_checks (
@@ -17,13 +19,6 @@ async function ensureSharedReportsTable(env) {
     result_json TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
   )`).run().catch(error => { sharedReportsTables.delete(env.DB); throw error; }));
   await sharedReportsTables.get(env.DB);
-}
-export function publicUrl(input) {
-  try {
-    const u = new URL(/^https?:\/\//i.test(input.trim()) ? input.trim() : 'https://' + input.trim());
-    if (!['https:', 'http:'].includes(u.protocol) || u.username || u.password || !u.hostname.includes('.') || u.href.length > 2048) return null;
-    u.hash = ''; return u.href;
-  } catch { return null; }
 }
 export async function quota(env, userId) {
   const now = Date.now();

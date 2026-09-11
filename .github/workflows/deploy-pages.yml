@@ -6,6 +6,7 @@ on:
     paths:
       - 'web/**'
       - 'worker/**'
+      - 'extension/**'
       - 'scripts/build-example.mjs'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
@@ -38,6 +39,9 @@ jobs:
         run: npm test
       - name: Build fictional example
         run: node scripts/build-example.mjs
+      - name: Package current extension source
+        working-directory: extension
+        run: zip -j -FS ../web/public/ai-visibility-check-extension-connected.zip manifest.json popup.html popup.css popup.js
       - name: Build
         working-directory: web
         env:

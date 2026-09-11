@@ -1,3 +1,5 @@
+import { fetchPublicText } from './public-web.js';
+import { parseHTML } from 'linkedom';
 import { diagnose, QUADRANT_LABEL, DIAGNOSIS_VERSION } from './diagnose.js';
 import { askAI, brandProbePrompt } from './ai.js';
 import { createAuth, sessionOf, providerStatus } from './auth.js';
@@ -99,25 +101,16 @@ async function loadAiAnswer(env, host) {
 }
 
 function normalize(input) {
-  let s = (input || '').trim();
-  if (!s) return null;
-  if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
-  try {
-    const u = new URL(s);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
-    u.hash = '';
-    return u;
-  } catch {
-    return null;
-  }
+  const url = publicUrl(input);
+  return url ? new URL(url) : null;
 }
 
 function extensionResult(input) {
   const images = Array.isArray(input?.images) ? input.images.slice(0, 100) : [];
-  const title = typeof input?.title === 'string' ? input.title.trim() : '';
-  const description = typeof input?.description === 'string' ? input.description.trim() : '';
-  const headings = Array.isArray(input?.headings) ? input.headings.filter(x => typeof x === 'string' && x.trim()) : [];
-  const prices = Array.isArray(input?.prices) ? input.prices : [];
+  const title = typeof input?.title === 'string' ? input.title.trim().slice(0, 200) : '';
+  const description = typeof input?.description === 'string' ? input.description.trim().slice(0, 600) : '';
+  const headings = Array.isArray(input?.headings) ? input.headings.filter(x => typeof x === 'string' && x.trim()).slice(0, 20).map(x => x.slice(0, 200)) : [];
+  const prices = Array.isArray(input?.prices) ? input.prices.filter(x => typeof x === 'string').slice(0, 30).map(x => x.slice(0, 80)) : [];
   const described = images.filter(x => typeof x?.alt === 'string' && x.alt.trim()).length;
   const aiScore = Math.round((title ? 30 : 0) + (description.length >= 40 ? 30 : description ? 15 : 0) + (headings.length ? 20 : 0) + (input?.url ? 20 : 0));
   const uxScore = Math.round((title ? 20 : 0) + (images.length ? (described / images.length) * 40 : 0) + (prices.length ? 25 : 0) + (description ? 15 : 0));
@@ -130,7 +123,7 @@ async function handleScan(request, env, origin) {
   if (env.AUTH_REQUIRED === 'true' && request.method !== 'POST') return json({ error: 'METHOD', message: '새 화면에서 다시 검사해 주세요.' }, 405, origin);
   const params = new URL(request.url).searchParams;
   const target = normalize(params.get('url'));
-  if (!target || !publicUrl(target.href)) return json({ error: 'INVALID_URL' }, 400, origin);
+  if (!target) return json({ error: 'INVALID_URL' }, 400, origin);
 
   const ttl = Number(env.CACHE_TTL_HOURS || 24);
   const cached = params.get('refresh') === '1' ? null : await readCache(env, target.href, ttl);
@@ -196,8 +189,7 @@ async function handleScan(request, env, origin) {
     await saveAiAnswer(env, target.host, result.ai);
   } else {
     // 이번 호출이 실패해도 예전에 받아 둔 응답이 있으면 그것을 쓴다. 수집 시점을 함께 밝힌다.
-    const previous = previousAnswer;
-    result.ai = previous || {
+    result.ai = previousAnswer || {
       provider: null,
       model: null,
       unavailable: true,
@@ -231,22 +223,20 @@ async function verifyOwnership(origin, host) {
   const token = await optinToken(host);
   const ua = { 'User-Agent': 'AIVisibilityCheck/0.1 (+optin-verify)' };
 
-  const wellKnown = await fetch(origin + '/.well-known/ai-visibility-check.txt', { headers: ua })
-    .then(r => (r.ok ? r.text() : ''))
-    .catch(() => '');
-  if (wellKnown.includes(token)) return { ok: true, via: 'well-known', token };
+  const wellKnown = await fetchPublicText(origin + '/.well-known/ai-visibility-check.txt', ua, { sameOrigin: true });
+  if (wellKnown.ok && wellKnown.text.trim() === token) return { ok: true, via: 'well-known', token };
 
-  const html = await fetch(origin + '/', { headers: ua })
-    .then(r => (r.ok ? r.text() : ''))
-    .catch(() => '');
-  const re = /<meta[^>]+name=["']ai-visibility-check["'][^>]+content=["']([^"']+)["']/i;
-  const m = html.match(re);
-  if (m && m[1].trim() === token) return { ok: true, via: 'meta', token };
+  const page = await fetchPublicText(origin + '/', ua, { sameOrigin: true });
+  const { document } = parseHTML(page.text);
+  if (document.querySelector('meta[name="ai-visibility-check"]')?.getAttribute('content')?.trim() === token) {
+    return { ok: true, via: 'meta', token };
+  }
 
   return { ok: false, token };
 }
 
 async function handleOptin(request, env, origin) {
+  if (!['GET', 'POST'].includes(request.method)) return json({ error: 'METHOD' }, 405, origin);
   const params = new URL(request.url).searchParams;
   const target = normalize(params.get('url'));
   if (!target) return json({ error: 'INVALID_URL' }, 400, origin);
@@ -336,8 +326,9 @@ export default {
       }
       if (pathname === '/api/extension/scan' && request.method === 'POST') {
         const body = await request.json().catch(() => null);
-        if (!body?.url || !publicUrl(body.url)) return json({ error: 'INVALID_URL', message: '현재 탭 주소를 읽지 못했습니다.' }, 400, origin);
-        return json(extensionResult(body), 200, origin);
+        const url = publicUrl(body?.url);
+        if (!url) return json({ error: 'INVALID_URL', message: '현재 탭 주소를 읽지 못했습니다.' }, 400, origin);
+        return json(extensionResult({ ...body, url }), 200, origin);
       }
       if (pathname === '/api/share') {
         const result = await readSharedReport(env, new URL(request.url).searchParams.get('token'));
@@ -371,4 +362,3 @@ export default {
     }
   },
 };
-

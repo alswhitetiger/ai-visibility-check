@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { memberApi, sameOrigin, loginUrl, markSessionActive, clearSessionActive } from './member-api';
-import { HistorySparkline, Onboarding, ScoreSummary } from './MemberDashboard';
+import { HistorySparkline, ScoreSummary } from './MemberDashboard';
 import './account.css';
 
 const providers = { google: 'Google · Gmail', kakao: '카카오', naver: '네이버' };

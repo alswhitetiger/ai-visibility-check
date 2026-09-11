@@ -1,11 +1,4 @@
-// 3단 폴백 AI 호출기.
-//   ① Gemini (무료 티어)  → ② OpenAI  → ③ Anthropic Claude
-// 앞 단계가 한도(429)나 장애(5xx/타임아웃)를 내면 다음 단계로 넘어간다.
-// 키 오류(4xx)는 폴백하지 않는다. 키 하나가 잘못됐을 때 셋을 다 태우지 않기 위해서다.
-
-// 모델은 wrangler.toml 의 vars 로 덮어쓸 수 있다.
-// 무료 티어에서는 flash-lite 만 안정적이다. 상위 모델은 503(수요 폭주)이 잦고
-// pro 계열은 429(결제 필요)가 난다. API 결제를 연결하면 GEMINI_MODEL 만 바꾸면 된다.
+// 각 공급자를 한 번씩 호출하고 실패하면 다음 공급자로 넘어간다.
 const PROVIDERS = [
   { name: 'gemini', keyVar: 'GEMINI_API_KEY', modelVar: 'GEMINI_MODEL', model: 'gemini-3.5-flash-lite' },
   { name: 'openai', keyVar: 'OPENAI_API_KEY', modelVar: 'OPENAI_MODEL', model: 'gpt-5-mini' },
@@ -13,17 +6,6 @@ const PROVIDERS = [
 ];
 
 const TIMEOUT_MS = 10000;
-
-// Interactive scans fail over immediately instead of making the visitor wait.
-const RETRY_DELAYS = [];
-
-// 재시도로 이득이 있는 것만 넣는다.
-// region(지역 제한)은 요청을 처리한 Cloudflare 콜로의 egress 위치에 달려 있어
-// 같은 요청 안에서 다시 시도해도 결과가 바뀌지 않는다. 실측 4회 모두 동일했다.
-// 지연만 늘어나므로 재시도하지 않고, 보관해 둔 이전 응답으로 넘긴다(index.js).
-const RETRYABLE = new Set(['rate_limit']);
-
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 class ProviderError extends Error {
   constructor(kind, status, body) {
@@ -40,7 +22,7 @@ function classify(status, body) {
   if (status === 401 || status === 403) return 'auth';
   // Gemini 무료 티어는 요청이 나간 위치를 지원 지역으로 인정하지 않으면
   // 400 FAILED_PRECONDITION 을 낸다. 키나 요청이 잘못된 게 아니라 위치 문제라
-  // 재시도 대상으로 분류한다.
+  // 다음 공급자로 넘어간다.
   if (status === 400 && /location is not supported/i.test(body || '')) return 'region';
   return 'client';
 }
@@ -133,29 +115,13 @@ export async function askAI(env, { system, user }) {
     if (!key) { tried.push({ provider: p.name, skipped: 'no_key' }); continue; }
     const model = env[p.modelVar] || p.model;
 
-    for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
-      try {
-        const text = await CALLERS[p.name](key, model, system, user);
-        const json = extractJson(text);
-        if (!json) throw new ProviderError('client', 200, 'unparseable');
-        return { ok: true, provider: p.name, model, json };
-      } catch (e) {
-        const kind = e.kind || 'network';
-        // 분당 한도와 지역 제한은 같은 단계에서 잠깐 기다렸다 다시 시도한다.
-        if (RETRYABLE.has(kind) && attempt < RETRY_DELAYS.length) {
-          await sleep(RETRY_DELAYS[attempt]);
-          continue;
-        }
-        // detail 은 프로바이더가 돌려준 오류 메시지다. 키는 포함되지 않는다.
-        // 공개 응답에는 넣지 않고, 심사/디버깅 경로에서만 노출한다(index.js).
-        tried.push({
-          provider: p.name,
-          kind,
-          status: e.status,
-          detail: String(e.body || '').slice(0, 300),
-        });
-        break; // 다음 프로바이더로
-      }
+    try {
+      const text = await CALLERS[p.name](key, model, system, user);
+      const json = extractJson(text);
+      if (!json) throw new ProviderError('client', 200, 'unparseable');
+      return { ok: true, provider: p.name, model, json };
+    } catch (e) {
+      tried.push({ provider: p.name, kind: e.kind || 'network', status: e.status });
     }
   }
 

@@ -3,6 +3,7 @@ const preview = document.querySelector('#preview');
 const send = document.querySelector('#send');
 let extracted = null;
 document.querySelector('#scan').addEventListener('click', async () => {
+  extracted = null; send.disabled = true;
   status.textContent = '현재 탭의 공개 정보만 읽는 중…'; preview.hidden = true;
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -27,9 +28,12 @@ send.addEventListener('click', async () => {
     const response = await fetch('https://ai-visibility.ai-visibility-worker.workers.dev/api/extension/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(extracted) });
     const data = await response.json();
     if (!response.ok || data.error) throw new Error(data.message || '점수를 계산하지 못했습니다.');
-    preview.textContent = JSON.stringify({ 안내: '로그인 후 브라우저에서 추출한 정보 기준의 참고 점수입니다.', AI정보점수: data.aiScore, 고객정보점수: data.uxScore, 관찰정보: data.observed }, null, 2);
-    status.textContent = '점수를 확인했습니다. 공개 페이지 검사 점수와는 별도로 해석하세요.';
+    const compact = { url: data.url, host: data.host, version: data.version, browserExtracted: true, aiScore: data.aiScore, uxScore: data.uxScore, observed: data.observed, scannedAt: data.scannedAt, checks: data.checks || [] };
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(compact))));
+    const resultUrl = 'https://alswhitetiger.github.io/ai-visibility-check/?extensionResult=' + encodeURIComponent(encoded);
+    preview.textContent = JSON.stringify({ 안내: '검사가 완료되었습니다. 홈페이지 결과 화면을 여는 중입니다.', AI정보점수: data.aiScore, 고객정보점수: data.uxScore }, null, 2);
+    status.textContent = '홈페이지에서 상세 결과를 확인하세요.';
+    chrome.tabs.create({ url: resultUrl });
   } catch (error) { status.textContent = error.message || '점수를 계산하지 못했습니다.'; }
   finally { send.disabled = false; }
 });
-

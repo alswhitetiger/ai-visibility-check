@@ -26,28 +26,16 @@ export default function ResultActions({ data, apiBase }) {
     finally { setShareBusy(false); }
   }
 
-  async function startOptin() {
-    if (!apiBase) return;
+  async function updateOptin(method = 'GET') {
     setBusy(true);
     try {
-      const r = await fetch(`${apiBase}/api/optin?url=${encodeURIComponent(data.host)}`);
-      setOptin(await r.json());
-    } catch {
-      setOptin({ error: 'NETWORK', message: '연결하지 못했습니다.' });
-    }
-    setBusy(false);
-  }
-
-  async function confirmOptin() {
-    setBusy(true);
-    try {
-      const r = await fetch(`${apiBase}/api/optin?url=${encodeURIComponent(data.host)}`, { method: 'POST' });
-      const j = await r.json();
-      setOptin(prev => ({ ...prev, ...j }));
-    } catch {
-      setOptin(prev => ({ ...prev, error: 'NETWORK', message: '연결하지 못했습니다.' }));
-    }
-    setBusy(false);
+      const response = await fetch(`${apiBase}/api/optin?url=${encodeURIComponent(data.url)}`, { method });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || '등록 정보를 확인하지 못했습니다.');
+      setOptin(previous => ({ ...previous, message: '', ...result }));
+    } catch (error) {
+      setOptin(previous => ({ ...previous, error: 'REQUEST', message: error.message || '연결하지 못했습니다.' }));
+    } finally { setBusy(false); }
   }
 
   return (
@@ -56,8 +44,8 @@ export default function ResultActions({ data, apiBase }) {
         <button className="btn" onClick={copyShare} disabled={shareBusy}>
           {shareBusy ? '링크 만드는 중…' : copied ? '복사했습니다' : '공유 링크 만들기'}
         </button>
-        {apiBase && !optin && (
-          <button className="btn ghost" onClick={startOptin} disabled={busy}>
+        {!optin?.token && !optin?.ok && (
+          <button className="btn ghost" onClick={() => updateOptin()} disabled={busy}>
             이 사이트를 공개 목록에 등록
           </button>
         )}
@@ -87,14 +75,14 @@ export default function ResultActions({ data, apiBase }) {
               <pre>{optin.token}</pre>
             </li>
           </ol>
-          <button className="btn" onClick={confirmOptin} disabled={busy}>
+          <button className="btn" onClick={() => updateOptin('POST')} disabled={busy}>
             {busy ? '확인 중…' : '등록했습니다. 확인해 주세요'}
           </button>
           {optin.message && <p className="hint">{optin.message}</p>}
         </div>
       )}
 
-      {optin && optin.error === 'SCAN_FIRST' && <p className="hint">{optin.message}</p>}
+      {optin?.message && !optin.token && <p className="hint" role="status">{optin.message}</p>}
     </section>
   );
 }

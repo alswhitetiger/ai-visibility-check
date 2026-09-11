@@ -1,3 +1,4 @@
+import { fetchPublicText } from './public-web.js';
 import { DIAGNOSIS_VERSION, robotsAccess, isHtml, fileState, readPage } from './parse.js';
 export { DIAGNOSIS_VERSION } from './parse.js';
 // 규칙 기반 진단 엔진. LLM을 전혀 쓰지 않는다.
@@ -45,22 +46,7 @@ const BASE_HEADERS = {
   'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
 };
 
-async function get(url, ua, timeoutMs = 10000) {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
-      headers: { ...BASE_HEADERS, 'User-Agent': ua },
-      signal: ctl.signal,
-      redirect: 'follow',
-    });
-    return { ok: res.ok, status: res.status, finalUrl: res.url, text: res.ok ? await res.text() : '' };
-  } catch {
-    return { ok: false, status: 0, text: '' };
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const get = (url, ua) => fetchPublicText(url, { ...BASE_HEADERS, 'User-Agent': ua });
 
 function analyzeRobots(txt, url) {
   const answer = robotsAccess(txt, url, ANSWER_CRAWLERS);

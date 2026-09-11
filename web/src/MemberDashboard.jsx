@@ -9,7 +9,7 @@ function scoreLabel(value) {
 }
 
 export function ScoreRing({ value, label, tone = 'blue' }) {
-  const score = Number.isFinite(Number(value)) ? Math.max(0, Math.min(100, Number(value))) : null;
+  const score = value != null && value !== '' && Number.isFinite(Number(value)) ? Math.max(0, Math.min(100, Number(value))) : null;
   return <div className={'score-ring score-ring-'+tone} style={{ '--score': `${score ?? 0}%` }} aria-label={`${label} ${score == null ? '미확인' : score+'점'}`}>
     <div className="score-ring-inner"><strong>{score == null ? '—' : score}</strong><span>{label}</span></div>
   </div>;
