@@ -12,6 +12,7 @@ import PlatformGuide from './PlatformGuide';
 import { failureHelp, aiFailureHelp } from './failure-help';
 import ScreenshotGuide from './ScreenshotGuide';
 import { readExtensionResult } from './extension-result';
+import { copyText } from './ui-utils';
 
 const VERSION = '2026-09-09.1';
 const STORAGE = 'shop-check:last:';
@@ -41,7 +42,7 @@ function statusText(value) { return value === true ? '확인됨' : value === fal
 function Copy({ text, label = '코드 예시 복사' }) {
   const [message, setMessage] = useState('');
   async function copy() {
-    try { await navigator.clipboard.writeText(text); setMessage('복사했어요'); }
+    try { await copyText(text); setMessage('복사했어요'); }
     catch { setMessage('복사하지 못했어요. 내용을 선택해 복사해 주세요.'); }
   }
   return <div className="copy-row"><button className="button small secondary" onClick={copy}>{label}</button><span role="status">{message}</span></div>;

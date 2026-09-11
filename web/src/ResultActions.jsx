@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { memberApi, sameOrigin } from './member-api';
+import { copyText, useAction } from './ui-utils';
 export default function ResultActions({ data, apiBase }) {
   const [copied, setCopied] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [shareBusy, setShareBusy] = useState(false), [shareMessage, setShareMessage] = useState('');
   const [optin, setOptin] = useState(null); // null | {token, howto} | {status}
   const [busy, setBusy] = useState(false);
+  const run = useAction(setBusy, message => setShareMessage(message));
 
   async function copyShare() {
     if (!sameOrigin) { setShareMessage('로그인 후 공유 링크를 만들 수 있어요.'); return; }
@@ -17,7 +19,7 @@ export default function ResultActions({ data, apiBase }) {
         shareUrl = `${location.origin}${location.pathname}?share=${encodeURIComponent(created.token)}`;
         setShareLink(shareUrl);
       }
-      try { await navigator.clipboard.writeText(shareUrl); }
+      try { await copyText(shareUrl); }
       catch { setShareMessage('링크가 생성됐습니다. 아래 주소를 선택해 복사해 주세요.'); return; }
       setCopied(true);
       setShareMessage('30일 동안 열 수 있는 읽기 전용 링크를 복사했습니다.');
@@ -27,15 +29,12 @@ export default function ResultActions({ data, apiBase }) {
   }
 
   async function updateOptin(method = 'GET') {
-    setBusy(true);
-    try {
+    await run(async () => {
       const response = await fetch(`${apiBase}/api/optin?url=${encodeURIComponent(data.url)}`, { method });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || '등록 정보를 확인하지 못했습니다.');
       setOptin(previous => ({ ...previous, message: '', ...result }));
-    } catch (error) {
-      setOptin(previous => ({ ...previous, error: 'REQUEST', message: error.message || '연결하지 못했습니다.' }));
-    } finally { setBusy(false); }
+    });
   }
 
   return (

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { buildShopCode } from './shop-code';
+import { copyText } from './ui-utils';
 
 export function ObservedInfo({ data }) {
   const o = data.observed;
@@ -36,7 +37,7 @@ export function ShopBuilder({ data, onScan }) {
     try { setResult(buildShopCode({name,url,description})); setError(''); } catch(e) {setError(e.message);}
   }
   async function copy() {
-    try { await navigator.clipboard.writeText(result.code); setCopied('완성된 코드를 복사했어요.'); }
+    try { await copyText(result.code); setCopied('완성된 코드를 복사했어요.'); }
     catch { setCopied('자동 복사가 되지 않았어요. 아래 코드를 선택해 복사해 주세요.'); }
   }
   return <section className="panel shop-builder" id="shop-builder"><p className="eyebrow">입력 → 확인 → 코드 완성 → 적용</p><h2>우리 가게 소개 정보 만들기</h2>

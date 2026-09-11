@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { memberApi } from './member-api';
 import { guides, titleOf } from './guides';
+import { useAction } from './ui-utils';
 export default function FixChecklist({ url, fixes, cloud }) {
   const [done, setDone] = useState({}), [busy, setBusy] = useState(false), [ready, setReady] = useState(!cloud), [message, setMessage] = useState('');
+  const run = useAction(setBusy, setMessage);
   async function load() {
-    setBusy(true); setMessage('');
-    try { const data = await memberApi('/api/member/checklist?url=' + encodeURIComponent(url)); setDone(data.items); setReady(true); }
-    catch { setReady(false); setMessage('체크리스트를 불러오지 못했습니다. 다시 불러와 주세요.'); }
-    finally { setBusy(false); }
+    const data = await run(() => memberApi('/api/member/checklist?url=' + encodeURIComponent(url)));
+    if (data) { setDone(data.items); setReady(true); }
+    else setReady(false);
   }
   useEffect(() => {
     if (!cloud) return;
@@ -19,10 +20,8 @@ export default function FixChecklist({ url, fixes, cloud }) {
   async function toggle(id) {
     if (busy || !ready) return;
     if (!cloud) { setDone(old => ({ ...old, [id]: !old[id] })); return; }
-    setBusy(true); setMessage('저장 중…');
-    try { const data = await memberApi('/api/member/checklist', { url, id, done: !done[id] }); setDone(data.items); setMessage('계정에 저장했습니다.'); }
-    catch { setMessage('저장하지 못했습니다. 완료 상태는 변경되지 않았습니다. 다시 선택해 주세요.'); }
-    finally { setBusy(false); }
+    const data = await run(() => memberApi('/api/member/checklist', { url, id, done: !done[id] }), '계정에 저장했습니다.');
+    if (data) setDone(data.items);
   }
   if (!fixes.length) return null;
   return <section className="panel fix-checklist"><div className="checklist-heading"><div><p className="eyebrow">개선 체크리스트</p><h3>고친 항목을 표시해 두세요</h3></div><span>{fixes.filter(c => done[c.id]).length} / {fixes.length}</span></div>

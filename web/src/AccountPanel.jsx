@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { memberApi, sameOrigin, loginUrl, markSessionActive, clearSessionActive } from './member-api';
 import { HistorySparkline, ScoreSummary } from './MemberDashboard';
+import { useAction } from './ui-utils';
 import './account.css';
 
 const providers = { google: 'Google · Gmail', kakao: '카카오', naver: '네이버' };
@@ -19,10 +20,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
     }).catch(e => { if (active) setMessage(e.message); });
     return () => { active = false; };
   }, [user?.id, revision]);
-  async function act(fn) {
-    setBusy(true); setMessage('');
-    try { await fn(); } catch (e) { setMessage(e.message); } finally { setBusy(false); }
-  }
+  const act = useAction(setBusy, setMessage);
   async function emailSubmit(e) {
     e.preventDefault(); const fields = Object.fromEntries(new FormData(e.currentTarget));
     await act(async () => {
