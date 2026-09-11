@@ -23,7 +23,7 @@ export default function CustomerQuestions({ data }) {
     {error && <p role="alert">{error}</p>}
     {result && <div aria-live="polite"><p>{result.provider} / {result.model} · {result.cached ? '저장된 결과' : '이번 분석'} · {new Date(result.generatedAt).toLocaleString('ko-KR')}</p>
       <p>근거 있음 {result.answers.filter(a => a.status === 'answered').length}개 · 일부 확인 {result.answers.filter(a => a.status === 'partial').length}개 · 미확인 {result.answers.filter(a => a.status === 'unknown').length}개</p>
-      {result.answers.map(item => <article className="fix-card" key={item.id}><div><h3>{item.question}</h3><b>{labels[item.status]}</b><p>{item.answer}</p>
+      {result.answers.map(item => <article className="fix-card customer-answer" key={item.id}><div><h3>{item.question}</h3><b>{labels[item.status]}</b><p>{item.answer}</p>
         {!!item.evidence.length && <details><summary>페이지에서 찾은 근거</summary>{item.evidence.map((e, i) => <blockquote key={i}>{e.quote}<small> ({e.source})</small></blockquote>)}</details>}
         {item.suggestion && <p><b>확인 후 보완할 내용:</b> {item.suggestion}</p>}</div></article>)}
       <p className="muted">인용문이 수집 자료에 있는지 검증했습니다. 질문에 충분히 답하는지와 내용의 사실 여부는 운영자가 확인해 주세요. 기존 점수에는 반영하지 않습니다.</p></div>}

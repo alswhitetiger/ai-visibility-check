@@ -251,3 +251,5 @@ body { background-color: #fbfaf7; background-image: radial-gradient(circle at 84
 
 /* Keep controls out of exported reports. */
 @media print { .result-save-actions { display: none !important; } }
+.fix-card.customer-answer { display: block; overflow-wrap: anywhere; }
+.customer-answer blockquote { margin: 12px 0; padding: 12px; border-left: 3px solid #365c4c; }
