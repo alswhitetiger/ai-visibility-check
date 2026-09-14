@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth';
+import { emailOTP } from 'better-auth/plugins';
 
 export const providerNames = ['google', 'kakao', 'naver'];
 export function providerStatus(env) {
@@ -10,12 +11,16 @@ export function authOptions(env) {
   for (const [p, enabled] of Object.entries(providerStatus(env))) {
     if (enabled) socialProviders[p] = { clientId: env[p.toUpperCase() + '_CLIENT_ID'], clientSecret: env[p.toUpperCase() + '_CLIENT_SECRET'] };
   }
-  if (socialProviders.kakao) Object.assign(socialProviders.kakao, { disableDefaultScope: true, scope: ['account_email', 'profile_nickname'] });
+  if (socialProviders.kakao) Object.assign(socialProviders.kakao, {
+    disableDefaultScope: true,
+    scope: ['profile_nickname'],
+    mapProfileToUser: profile => ({ email: `kakao-${profile.id}@users.invalid` }),
+  });
   const mailReady = !!(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM);
-  async function sendEmail(to, subject, url) {
+  async function sendEmail(to, subject, text) {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST', headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: env.AUTH_EMAIL_FROM, to: [to], subject, text: `가게 체크\n\n${subject}\n${url}\n\n본인이 요청하지 않았다면 이 메일을 무시하세요.` }),
+      body: JSON.stringify({ from: env.AUTH_EMAIL_FROM, to: [to], subject, text: `가게 체크\n\n${text}\n\n본인이 요청하지 않았다면 이 메일을 무시하세요.` }),
     });
     if (!response.ok) throw new Error('인증 메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.');
   }
@@ -26,9 +31,15 @@ export function authOptions(env) {
     emailAndPassword: {
       enabled: true, minPasswordLength: 12, maxPasswordLength: 128,
       requireEmailVerification: mailReady,
-      ...(mailReady ? { sendResetPassword: async ({ user, url }) => sendEmail(user.email, '비밀번호 재설정', url) } : {}),
+      ...(mailReady ? { sendResetPassword: async ({ user, url }) => sendEmail(user.email, '가게 체크 비밀번호 재설정', `아래 주소에서 비밀번호를 다시 설정하세요.\n${url}`) } : {}),
     },
-    ...(mailReady ? { emailVerification: { sendOnSignUp: true, sendOnSignIn: true, autoSignInAfterVerification: true, sendVerificationEmail: async ({ user, url }) => sendEmail(user.email, '이메일 주소 확인', url) } } : {}),
+    ...(mailReady ? {
+      emailVerification: { sendOnSignUp: true, sendOnSignIn: true, autoSignInAfterVerification: true },
+      plugins: [emailOTP({
+        overrideDefaultEmailVerification: true, otpLength: 6, expiresIn: 600, allowedAttempts: 5, storeOTP: 'hashed', rateLimit: { window: 60, max: 3 },
+        sendVerificationOTP: ({ email, otp, type }) => sendEmail(email, type === 'forget-password' ? '가게 체크 비밀번호 재설정 번호' : '가게 체크 이메일 인증번호', `인증번호: ${otp}\n\n10분 안에 입력해 주세요.`),
+      })],
+    } : {}),
     socialProviders,
     account: { encryptOAuthTokens: true, accountLinking: { enabled: true, disableImplicitLinking: true, allowDifferentEmails: true, allowUnlinkingAll: false } },
     session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 },

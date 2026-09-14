@@ -178,8 +178,13 @@
 .account-page .dashboard-quota { border-radius: 14px; background: #fffefa; }
 .account-page .score-summary, .account-page .history-chart, .account-page .dashboard-empty { border-color: #e2e5df; background: #fffefa; }
 .account-page .account-usage { background: #edf3ec; border: 1px solid #dfe8dc; }
+.privacy-consent-box{padding:18px;border:1px solid #ddd5cc;border-radius:13px;background:#faf8f4;color:#4d4944;font-size:.84rem;line-height:1.55}.privacy-consent-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px;color:#292623}.privacy-consent-heading strong{font-size:.98rem}.privacy-consent-heading span{color:#7b746d;font-size:.76rem;white-space:nowrap}.privacy-consent-box dl{margin:0;border-top:1px solid #e5ded6}.privacy-consent-box dl>div{display:grid;grid-template-columns:92px 1fr;border-bottom:1px solid #e5ded6}.privacy-consent-box dt,.privacy-consent-box dd{margin:0;padding:9px 8px}.privacy-consent-box dt{font-weight:800;color:#3b3834}.privacy-consent-box p{margin:12px 0}.privacy-document-link{display:inline-block;color:#365c4c;font-weight:750;text-underline-offset:3px}.privacy-consent-box .account-consent{align-items:flex-start;gap:9px;margin-top:15px;padding-top:14px;border-top:1px solid #e5ded6;color:#292623}.privacy-consent-box .account-consent input{flex:0 0 18px;width:18px!important;min-height:18px!important;margin:2px 0 0;padding:0}.otp-heading{display:grid;gap:4px;padding:14px 16px;border-radius:11px;background:#edf3ec}.otp-heading span{color:#66736c;font-size:.84rem}.otp-input{text-align:center;font-size:1.35rem!important;font-weight:800;letter-spacing:.3em}.account-help-buttons{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px}.email-unavailable{padding:12px 14px;border-radius:10px;background:#fff4e8;color:#82451c;font-size:.86rem;line-height:1.5}
+.account-page:has(.privacy-consent-box):not(:has(.member-grid)) main{max-width:760px}.account-page:has(.privacy-consent-box):not(:has(.member-grid)) .account-form{max-width:100%}
+.account-page:has(.account-form):not(:has(.member-grid)) .account-tabs .button{padding:10px 6px;white-space:nowrap}
 @media(max-width:700px) {
   .account-page .dashboard-hero { padding: 22px; border-radius: 18px; }
   .account-page .score-summary { padding: 20px; }
 }
+@media(max-width:520px){.privacy-consent-box dl>div{grid-template-columns:1fr}.privacy-consent-box dt{padding-bottom:0}.privacy-consent-heading{align-items:flex-start;flex-direction:column;gap:2px}}
+@media(max-width:360px){.account-page:has(.account-form):not(:has(.member-grid)) .account-tabs .button{font-size:.78rem;letter-spacing:-.04em}}
 

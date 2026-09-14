@@ -26,7 +26,7 @@ function database() {
 }
 function setup(t) {
   const { db, sqlite } = database(); t.after(()=>sqlite.close());
-  const env = { DB: db, AUTH_SECRET: 'test-only-secret-0123456789-0123456789', AUTH_BASE_URL: 'http://localhost:8787', AUTH_REQUIRED: 'true', ACCOUNT_DAILY_LIMIT: '2', DAILY_SCAN_LIMIT: '3' };
+  const env = { DB: db, AUTH_SECRET: 'test-only-secret-0123456789-0123456789', AUTH_BASE_URL: 'http://localhost:8787', AUTH_REQUIRED: 'true', ALLOW_UNVERIFIED_EMAIL_SIGNUP: 'true', ACCOUNT_DAILY_LIMIT: '2', DAILY_SCAN_LIMIT: '3' };
   async function request(path, { body, cookie, method = body ? 'POST' : 'GET', origin = env.AUTH_BASE_URL } = {}) {
     return worker.fetch(new Request(env.AUTH_BASE_URL + path, { method, headers: { Origin: origin, 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }), env);
   }
@@ -38,6 +38,36 @@ function setup(t) {
   }
   return { env, sqlite, request, signup };
 }
+test('production email signup is blocked until mail is configured', async t => {
+  const { env, request } = setup(t);
+  delete env.ALLOW_UNVERIFIED_EMAIL_SIGNUP;
+  const response = await request('/api/auth/sign-up/email', { body: { name: 'Test', email: 'blocked@example.test', password: 'test-only-long-password' } });
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, 'EMAIL_SERVICE_UNAVAILABLE');
+});
+
+test('email signup sends a hashed six-digit OTP and signs in only after verification', async t => {
+  const { env, sqlite, request } = setup(t);
+  env.RESEND_API_KEY = 'test-resend-key'; env.AUTH_EMAIL_FROM = 'test@example.test';
+  const actualFetch = globalThis.fetch; let sent;
+  t.after(() => { globalThis.fetch = actualFetch; });
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, 'https://api.resend.com/emails');
+    sent = JSON.parse(options.body);
+    return new Response('{}', { status: 200 });
+  };
+  const signup = await request('/api/auth/sign-up/email', { body: { name: 'OTP Test', email: 'otp@example.test', password: 'test-only-long-password' } });
+  assert.equal(signup.status, 200, await signup.clone().text());
+  assert.equal(signup.headers.getSetCookie().some(value => value.includes('session_token=')), false);
+  const otp = sent.text.match(/인증번호: (\d{6})/)?.[1];
+  assert.ok(otp);
+  assert.doesNotMatch(sqlite.prepare('SELECT value FROM verification').get().value, new RegExp(otp));
+  assert.equal(sqlite.prepare('SELECT emailVerified FROM user').get().emailVerified, 0);
+  const verified = await request('/api/auth/email-otp/verify-email', { body: { email: 'otp@example.test', otp } });
+  assert.equal(verified.status, 200, await verified.clone().text());
+  assert.ok(verified.headers.getSetCookie().some(value => value.includes('session_token=')));
+  assert.equal(sqlite.prepare('SELECT emailVerified FROM user').get().emailVerified, 1);
+});
 test('email signup stores a hash, session works, wrong password fails and signout revokes cookie', async t => {
   const { sqlite, request, signup } = setup(t);
   const a = await signup('alpha@example.test');
