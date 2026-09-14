@@ -80,7 +80,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
         {mode === 'signup' && <label>이름 또는 닉네임<input name="name" required maxLength={80} autoComplete="nickname" /></label>}
         {mode !== 'new-password' && <label>이메일<input type="email" name="email" required maxLength={254} autoComplete="email" placeholder="name@example.com" /></label>}
         {mode !== 'reset' && <label>비밀번호{mode !== 'login' && ' · 12자 이상'}<input type="password" name="password" required minLength={mode === 'login' ? 1 : 12} maxLength={128} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>}
-        {mode === 'signup' && <PrivacyConsent checkbox />}
+        {mode === 'signup' && <><p className="muted">인증번호는 운영자가 등록한 Gmail 계정에서 발송됩니다. 받은편지함과 스팸함을 확인해 주세요.</p><PrivacyConsent checkbox /></>}
         <button className="button primary" disabled={busy || !config.emailReady || (mode === 'signup' && !config.emailVerification)}>{busy ? '처리 중…' : mode === 'signup' ? '인증번호 받고 가입하기' : mode === 'reset' ? '재설정 메일 받기' : mode === 'new-password' ? '새 비밀번호 저장' : '로그인'}</button>
       </form>
       }

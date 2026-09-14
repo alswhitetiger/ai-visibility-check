@@ -81,6 +81,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; bac
 .faq { grid-column: 2; grid-row: 1 / span 3; }
 .faq details { border-bottom: 1px solid var(--line); padding: 16px 0; } .faq details:first-child { padding-top: 0; }
 .faq p { color: var(--muted); font-size: 15px; margin: 0; }
+.interview-form,.interview-result{display:grid;gap:14px}.interview-form label,.interview-result label{display:grid;gap:7px;font-weight:650}.interview-form textarea,.interview-result textarea,.interview-result input{width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--line);border-radius:9px;background:#fff;color:inherit;font:inherit}.interview-result pre{overflow:auto;padding:14px;border-radius:10px;background:#18241f;color:#f1f5f2;font-size:.78rem;line-height:1.5}.operator-interview .fix-card{display:grid;gap:10px}.operator-interview h3{margin:8px 0 0}
 .public-list { padding: 25px 0 38px; border-top: 1px solid var(--line); } .public-list h2 { font-size: 20px; margin: 0 0 5px; } .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
 .site-footer { padding: 28px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .site-footer p, .site-footer details { width: 100%; margin: 0; } .site-footer summary { font-size: 13px; font-weight: 500; }

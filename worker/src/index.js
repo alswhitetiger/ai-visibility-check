@@ -4,6 +4,7 @@ import { diagnose, QUADRANT_LABEL, DIAGNOSIS_VERSION } from './diagnose.js';
 import { askAI, brandProbePrompt } from './ai.js';
 import { generateDraft } from './draft.js';
 import { generateQuestions } from './questions.js';
+import { generateInterview } from './interview.js';
 import { createAuth, sessionOf, providerStatus, mailReady } from './auth.js';
 import { quota, reserveScan, releaseScan, saveHistory, memberRoute, publicUrl, readSharedReport } from './members.js';
 
@@ -323,7 +324,7 @@ export default {
         const extensionRequest = pathname === '/api/extension/scan' && /^chrome-extension:\/\/[a-z]{32}$/.test(request.headers.get('Origin') || '');
         const requestOrigin = request.headers.get('Origin') || '';
         const allowedApiOrigin = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).includes(requestOrigin);
-        const publicScanRequest = ['/api/scan', '/api/draft', '/api/questions'].includes(pathname) && allowedApiOrigin;
+        const publicScanRequest = ['/api/scan', '/api/draft', '/api/questions', '/api/interview'].includes(pathname) && allowedApiOrigin;
         if (!extensionRequest && !publicScanRequest && requestOrigin !== expected) return json({ message: '허용되지 않은 요청입니다.' }, 403, origin);
       }
       if (pathname.startsWith('/api/auth/')) {
@@ -371,6 +372,20 @@ export default {
         // 검사 유효기간을 연장하지 않고 같은 검사에 대한 초안을 재사용한다.
         await env.DB.prepare("UPDATE scans SET result_json = json_set(result_json, ?, json(?)) WHERE url = ? AND json_extract(result_json, '$.scannedAt') = ?").bind('$.' + field, JSON.stringify(draft), target.href, scan.scannedAt).run();
         return json(draft, 200, origin);
+      }
+      if (pathname === '/api/interview') {
+        if (request.method !== 'POST') return json({ message: 'POST 요청이 필요합니다.' }, 405, origin);
+        const body = await request.json().catch(() => null);
+        const target = normalize(body?.url);
+        if (!target) return json({ message: '공개 페이지 주소를 확인해 주세요.' }, 400, origin);
+        const scan = await readCache(env, target.href, Number(env.CACHE_TTL_HOURS || 24));
+        if (!scan || scan.pageSkipped) return json({ message: '먼저 이 페이지를 검사해 주세요.' }, 400, origin);
+        const usage = await bump(env, 'interview:' + today() + ':' + await anonymousBucket(request), 3);
+        if (usage.exceeded) return json({ message: '오늘 운영자 인터뷰 한도 3회를 사용했습니다. 저장된 결과를 확인해 주세요.' }, 429, origin);
+        const interview = await generateInterview(env, scan, body);
+        if (interview.error) return json(interview, 503, origin);
+        await env.DB.prepare("UPDATE scans SET result_json = json_set(result_json, '$.interview', json(?)) WHERE url = ? AND json_extract(result_json, '$.scannedAt') = ?").bind(JSON.stringify(interview), target.href, scan.scannedAt).run();
+        return json(interview, 200, origin);
       }
       if (pathname === '/api/showcase') {
         return await handleShowcase(env, origin);
