@@ -10,6 +10,7 @@ export function authOptions(env) {
   for (const [p, enabled] of Object.entries(providerStatus(env))) {
     if (enabled) socialProviders[p] = { clientId: env[p.toUpperCase() + '_CLIENT_ID'], clientSecret: env[p.toUpperCase() + '_CLIENT_SECRET'] };
   }
+  if (socialProviders.kakao) Object.assign(socialProviders.kakao, { disableDefaultScope: true, scope: ['account_email', 'profile_nickname'] });
   const mailReady = !!(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM);
   async function sendEmail(to, subject, url) {
     const response = await fetch('https://api.resend.com/emails', {
