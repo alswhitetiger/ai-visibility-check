@@ -4,7 +4,7 @@ import { HistorySparkline, ScoreSummary } from './MemberDashboard';
 import { useAction } from './ui-utils';
 import './account.css';
 
-const providers = { google: 'Google · Gmail', kakao: '카카오', naver: '네이버' };
+const providers = { google: '구글', kakao: '카카오', naver: '네이버' };
 export default function AccountPanel({ user, usage, onRefresh, onScan, onReport, revision, initialMode = 'login', callbackURL = location.origin + '/ai-visibility-check/account/' }) {
   const [config, setConfig] = useState({ providers: {} });
   const [mode, setMode] = useState(initialMode);
@@ -64,7 +64,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
         <button className="button primary" disabled={busy || !config.emailReady}>{busy ? '처리 중…' : mode === 'signup' ? '회원가입' : mode === 'reset' ? '재설정 메일 받기' : mode === 'new-password' ? '새 비밀번호 저장' : '로그인'}</button>
       </form>
       {config.emailVerification ? <button className="text-button" onClick={() => setMode('reset')}>비밀번호를 잊었나요?</button> : <p className="muted">이메일·비밀번호로 가입할 수 있습니다. 이메일 인증·비밀번호 찾기는 메일 서비스 연결 후 제공됩니다.</p>}
-      <div className="social-logins">{Object.entries(providers).map(([p,label]) => <button key={p} className={'button secondary social-'+p} disabled={busy || !config.providers[p]} onClick={() => social(p)}>{label}로 시작하기{!config.providers[p] && ' · 연결 준비 중'}</button>)}</div>
+      <div className="social-logins">{Object.entries(providers).map(([p,label]) => <button key={p} className={'button secondary social-'+p} disabled={busy || !config.providers[p]} onClick={() => social(p)}>{label} 로그인{!config.providers[p] && ' · 연결 준비 중'}</button>)}</div>
     </> : <>
       <section className="dashboard-hero"><div><p className="eyebrow">내 대시보드</p><h2>오늘의 개선 상황</h2><p className="muted">사이트를 등록하고 검사 결과의 변화를 이어서 확인하세요.</p></div><div className="dashboard-quota"><strong>{usage?.remaining ?? '—'}</strong><span>오늘 남은 검사</span><small>{usage?.used ?? 0} / {usage?.limit ?? 20}회 사용</small></div></section>
       <ScoreSummary history={history}/><HistorySparkline history={history}/>

@@ -156,6 +156,8 @@
   border-color: #ddd5cc;
   font-size: .88rem;
 }
+.account-page:has(.account-form):not(:has(.member-grid)) .social-logins .social-kakao:not(:disabled) { background: #fee500; border-color: #fee500; color: #191919; }
+.account-page:has(.account-form):not(:has(.member-grid)) .social-logins .social-naver:not(:disabled) { background: #03c75a; border-color: #03c75a; color: #fff; }
 .account-page:has(.account-form):not(:has(.member-grid)) .privacy-note { margin-top: 24px; padding-top: 18px; border-top: 1px solid #ebe5dd; }
 .account-page:has(.account-form):not(:has(.member-grid)) .site-footer { padding-bottom: 28px; text-align: center; }
 @media (max-width: 600px) {
