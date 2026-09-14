@@ -48,14 +48,7 @@ test('production email signup is blocked until mail is configured', async t => {
 
 test('email signup sends a hashed six-digit OTP and signs in only after verification', async t => {
   const { env, sqlite, request } = setup(t);
-  env.RESEND_API_KEY = 'test-resend-key'; env.AUTH_EMAIL_FROM = 'test@example.test';
-  const actualFetch = globalThis.fetch; let sent;
-  t.after(() => { globalThis.fetch = actualFetch; });
-  globalThis.fetch = async (url, options) => {
-    assert.equal(url, 'https://api.resend.com/emails');
-    sent = JSON.parse(options.body);
-    return new Response('{}', { status: 200 });
-  };
+  let sent; env.MAIL_SENDER = async message => { sent = message; };
   const signup = await request('/api/auth/sign-up/email', { body: { name: 'OTP Test', email: 'otp@example.test', password: 'test-only-long-password' } });
   assert.equal(signup.status, 200, await signup.clone().text());
   assert.equal(signup.headers.getSetCookie().some(value => value.includes('session_token=')), false);

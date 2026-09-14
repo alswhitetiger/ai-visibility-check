@@ -4,7 +4,7 @@ import { diagnose, QUADRANT_LABEL, DIAGNOSIS_VERSION } from './diagnose.js';
 import { askAI, brandProbePrompt } from './ai.js';
 import { generateDraft } from './draft.js';
 import { generateQuestions } from './questions.js';
-import { createAuth, sessionOf, providerStatus } from './auth.js';
+import { createAuth, sessionOf, providerStatus, mailReady } from './auth.js';
 import { quota, reserveScan, releaseScan, saveHistory, memberRoute, publicUrl, readSharedReport } from './members.js';
 
 const json = (data, status, origin) =>
@@ -328,10 +328,10 @@ export default {
       }
       if (pathname.startsWith('/api/auth/')) {
         if (!env.AUTH_SECRET) return json({ message: '로그인 설정을 준비 중입니다.' }, 503, origin);
-        if (pathname === '/api/auth/sign-up/email' && !(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM) && env.ALLOW_UNVERIFIED_EMAIL_SIGNUP !== 'true') return json({ code: 'EMAIL_SERVICE_UNAVAILABLE', message: '인증 메일 서비스를 준비 중입니다.' }, 503, origin);
+        if (pathname === '/api/auth/sign-up/email' && !mailReady(env) && env.ALLOW_UNVERIFIED_EMAIL_SIGNUP !== 'true') return json({ code: 'EMAIL_SERVICE_UNAVAILABLE', message: '인증 메일 서비스를 준비 중입니다.' }, 503, origin);
         return browserSessionCookies(await createAuth(env).handler(request));
       }
-      if (pathname === '/api/member/config') return json({ providers: providerStatus(env), emailReady: !!env.AUTH_SECRET, emailVerification: !!(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM), anonymousScan: env.ANON_SCAN_ENABLED === 'true', anonymousDailyLimit: Number(env.ANON_DAILY_LIMIT || 1), loginUrl: env.AUTH_BASE_URL + '/ai-visibility-check/signup/' }, 200, origin);
+      if (pathname === '/api/member/config') return json({ providers: providerStatus(env), emailReady: !!env.AUTH_SECRET, emailVerification: mailReady(env), anonymousScan: env.ANON_SCAN_ENABLED === 'true', anonymousDailyLimit: Number(env.ANON_DAILY_LIMIT || 1), loginUrl: env.AUTH_BASE_URL + '/ai-visibility-check/signup/' }, 200, origin);
       if (pathname.startsWith('/api/member/')) {
         const session = await sessionOf(request, env);
         if (pathname === '/api/member/me') return json({ user: session ? { id: session.user.id, name: session.user.name, email: session.user.email, emailVerified: session.user.emailVerified } : null, usage: session ? await quota(env, session.user.id) : null }, 200, origin);
