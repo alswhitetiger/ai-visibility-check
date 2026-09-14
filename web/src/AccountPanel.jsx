@@ -39,8 +39,15 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
         window.history.replaceState({}, '', location.pathname + '#account'); setMode('login'); setMessage('비밀번호를 변경했어요. 다시 로그인해 주세요.'); return;
       }
       try { await memberApi(mode === 'signup' ? '/api/auth/sign-up/email' : '/api/auth/sign-in/email', { email: fields.email, password: fields.password, rememberMe: false, ...(mode === 'signup' ? { name: fields.name } : {}), callbackURL }); }
-      catch (error) { if (error.code === 'EMAIL_NOT_VERIFIED') { setVerificationEmail(fields.email); setMode('verify'); } throw error; }
-      if (mode === 'signup') { setVerificationEmail(fields.email); setMode('verify'); setMessage('인증번호를 보냈습니다. 이메일을 확인해 주세요.'); return; }
+      catch (error) {
+        if (error.code !== 'EMAIL_NOT_VERIFIED') throw error;
+        await memberApi('/api/auth/email-otp/send-verification-otp', { email: fields.email, type: 'email-verification' });
+        setVerificationEmail(fields.email); setMode('verify'); setMessage('새 인증번호를 보냈습니다. 이메일을 확인해 주세요.'); return;
+      }
+      if (mode === 'signup') {
+        await memberApi('/api/auth/email-otp/send-verification-otp', { email: fields.email, type: 'email-verification' });
+        setVerificationEmail(fields.email); setMode('verify'); setMessage('인증번호를 보냈습니다. 이메일을 확인해 주세요.'); return;
+      }
       markSessionActive();
       await onRefresh();
     });

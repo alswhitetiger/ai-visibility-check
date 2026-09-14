@@ -34,7 +34,7 @@ export function authOptions(env) {
       ...(emailReady ? { sendResetPassword: async ({ user, url }) => sendEmail(user.email, '가게 체크 비밀번호 재설정', `아래 주소에서 비밀번호를 다시 설정하세요.\n${url}`) } : {}),
     },
     ...(emailReady ? {
-      emailVerification: { sendOnSignUp: true, sendOnSignIn: true, autoSignInAfterVerification: true },
+      emailVerification: { sendOnSignUp: false, sendOnSignIn: false, autoSignInAfterVerification: true },
       plugins: [emailOTP({
         overrideDefaultEmailVerification: true, otpLength: 6, expiresIn: 600, allowedAttempts: 5, storeOTP: 'hashed', rateLimit: { window: 60, max: 3 },
         sendVerificationOTP: ({ email, otp, type }) => sendEmail(email, type === 'forget-password' ? '가게 체크 비밀번호 재설정 번호' : '가게 체크 이메일 인증번호', `인증번호: ${otp}\n\n10분 안에 입력해 주세요.`),

@@ -52,6 +52,9 @@ test('email signup sends a hashed six-digit OTP and signs in only after verifica
   const signup = await request('/api/auth/sign-up/email', { body: { name: 'OTP Test', email: 'otp@example.test', password: 'test-only-long-password' } });
   assert.equal(signup.status, 200, await signup.clone().text());
   assert.equal(signup.headers.getSetCookie().some(value => value.includes('session_token=')), false);
+  assert.equal(sent, undefined);
+  const requested = await request('/api/auth/email-otp/send-verification-otp', { body: { email: 'otp@example.test', type: 'email-verification' } });
+  assert.equal(requested.status, 200, await requested.clone().text());
   const otp = sent.text.match(/인증번호: (\d{6})/)?.[1];
   assert.ok(otp);
   assert.doesNotMatch(sqlite.prepare('SELECT value FROM verification').get().value, new RegExp(otp));
