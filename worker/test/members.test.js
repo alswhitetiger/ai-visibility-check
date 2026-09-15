@@ -64,6 +64,19 @@ test('email signup sends a hashed six-digit OTP and signs in only after verifica
   assert.ok(verified.headers.getSetCookie().some(value => value.includes('session_token=')));
   assert.equal(sqlite.prepare('SELECT emailVerified FROM user').get().emailVerified, 1);
 });
+test('verified email cannot sign up again or replace its password', async t => {
+  const { env, sqlite, request } = setup(t);
+  env.MAIL_SENDER = async () => {};
+  const email = 'already@example.test', original = 'original-test-password', replacement = 'replacement-test-password';
+  assert.equal((await request('/api/auth/sign-up/email', { body: { name: 'Original', email, password: original } })).status, 200);
+  sqlite.prepare('UPDATE user SET emailVerified = 1 WHERE email = ?').run(email);
+  const duplicate = await request('/api/auth/sign-up/email', { body: { name: 'Replacement', email: email.toUpperCase(), password: replacement } });
+  assert.equal(duplicate.status, 409);
+  assert.equal((await duplicate.json()).code, 'EMAIL_ALREADY_REGISTERED');
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM user WHERE lower(email) = lower(?)').get(email).n, 1);
+  assert.equal((await request('/api/auth/sign-in/email', { body: { email, password: original } })).status, 200);
+  assert.equal((await request('/api/auth/sign-in/email', { body: { email, password: replacement } })).status, 401);
+});
 test('email signup stores a hash, session works, wrong password fails and signout revokes cookie', async t => {
   const { sqlite, request, signup } = setup(t);
   const a = await signup('alpha@example.test');
