@@ -50,3 +50,15 @@ export function HistorySparkline({ history }) {
   if (!points) return null;
   return <div className="history-chart"><div className="history-chart-heading"><b>AI 정보 점수 변화</b><span className="muted">최근 {Math.min(history.length, 7)}회</span></div><svg viewBox="0 0 100 100" role="img" aria-label="최근 AI 정보 점수 변화 그래프" preserveAspectRatio="none"><polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round"/></svg></div>;
 }
+
+export function HistoryComparison({ value, onClear }) {
+  if (!value) return null;
+  const { before, after } = value, older = new Map((before.checks || []).map(check=>[check.id,check]));
+  const improved = (after.checks || []).filter(check=>check.pass===true && older.get(check.id)?.pass===false);
+  const worsened = (after.checks || []).filter(check=>check.pass===false && older.get(check.id)?.pass===true);
+  const delta = (key) => before[key] == null || after[key] == null ? null : after[key] - before[key];
+  return <section className="history-comparison"><div className="history-comparison-heading"><div><p className="eyebrow">선택한 두 검사 비교</p><h3>{new Date(before.scannedAt).toLocaleDateString('ko-KR')} → {new Date(after.scannedAt).toLocaleDateString('ko-KR')}</h3><p className="muted">{after.url}</p></div><button className="text-button" onClick={onClear}>비교 닫기</button></div>
+    <div className="comparison-deltas">{[['AI 정보','aiScore'],['고객 정보','uxScore']].map(([label,key])=>{const change=delta(key);return <span key={key}>{label} <b>{change==null?'—':`${change>0?'+':''}${change}점`}</b></span>;})}</div>
+    <div className="history-change-grid"><div><b>개선된 항목 {improved.length}개</b><ul>{improved.length ? improved.map(check=><li key={check.id}>{check.label}</li>) : <li>통과로 바뀐 항목이 없습니다.</li>}</ul></div><div><b>다시 확인할 항목 {worsened.length}개</b><ul>{worsened.length ? worsened.map(check=><li key={check.id}>{check.label}</li>) : <li>새로 나빠진 항목이 없습니다.</li>}</ul></div></div>
+  </section>;
+}

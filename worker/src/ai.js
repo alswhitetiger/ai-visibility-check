@@ -128,6 +128,30 @@ export async function askAI(env, { system, user }) {
   return { ok: false, reason: 'exhausted', tried };
 }
 
+export async function searchGemini(env, query) {
+  if (!env.GEMINI_API_KEY) return { ok: false, kind: 'no_key' };
+  const model = env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+  try {
+    const data = await post(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: '일반 소비자의 질문에 한국어로 답하세요. 특정 브랜드를 미리 알고 있다고 가정하지 말고 Google 검색 결과에서 확인한 내용만 사용하세요.' }] },
+        contents: [{ role: 'user', parts: [{ text: query }] }],
+        tools: [{ google_search: {} }],
+        generationConfig: { temperature: 0.2 },
+      }),
+    });
+    const candidate = data?.candidates?.[0], metadata = candidate?.groundingMetadata || {};
+    const text = (candidate?.content?.parts || []).map(part => part.text || '').join('').trim();
+    const sources = (metadata.groundingChunks || []).map(chunk => chunk.web).filter(source => source?.uri && /^https?:\/\//i.test(source.uri)).slice(0, 10).map(source => ({ uri: source.uri, title: String(source.title || '').slice(0, 200) }));
+    if (!text) throw new ProviderError('client', 200, 'empty');
+    return { ok: true, provider: 'gemini', model, text: text.slice(0, 5000), sources, grounded: sources.length > 0, queries: (metadata.webSearchQueries || []).slice(0, 5), searchHtml: String(metadata.searchEntryPoint?.renderedContent || '').slice(0, 30000), generatedAt: Date.now() };
+  } catch (error) {
+    return { ok: false, kind: error.kind || 'network', status: error.status || 0 };
+  }
+}
+
 /** 브랜드 질의 5개를 한 번의 호출로 묶는다. 호출 수를 5분의 1로 줄이기 위한 것. */
 export function brandProbePrompt(brand, host) {
   const system = [

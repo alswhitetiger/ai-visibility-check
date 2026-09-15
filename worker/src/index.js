@@ -5,6 +5,7 @@ import { askAI, brandProbePrompt } from './ai.js';
 import { generateDraft } from './draft.js';
 import { generateQuestions } from './questions.js';
 import { generateInterview } from './interview.js';
+import { discoverBrand } from './discovery.js';
 import { createAuth, sessionOf, providerStatus, mailReady, sendAuthEmail } from './auth.js';
 import { quota, reserveScan, releaseScan, saveHistory, memberRoute, publicUrl, readSharedReport } from './members.js';
 
@@ -355,7 +356,7 @@ export default {
         return await memberRoute(request, env, session.user, json, origin);
       }
       if (pathname === '/api/health') {
-        return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now(), anonymousScan: env.ANON_SCAN_ENABLED === 'true', aiProviders: { gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY, anthropic: !!env.ANTHROPIC_API_KEY }, cache: { enabled: !!env.DB, ttlHours: Number(env.CACHE_TTL_HOURS || 24) } }, 200, origin);
+        return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now(), anonymousScan: env.ANON_SCAN_ENABLED === 'true', aiProviders: { gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY, anthropic: !!env.ANTHROPIC_API_KEY }, features: { googleSearchDiscovery: !!env.GEMINI_API_KEY }, cache: { enabled: !!env.DB, ttlHours: Number(env.CACHE_TTL_HOURS || 24) } }, 200, origin);
       }
       if (pathname === '/api/extension/scan' && request.method === 'POST') {
         const body = await request.json().catch(() => null);
@@ -399,8 +400,22 @@ export default {
         if (usage.exceeded) return json({ message: '오늘 운영자 인터뷰 한도 3회를 사용했습니다. 저장된 결과를 확인해 주세요.' }, 429, origin);
         const interview = await generateInterview(env, scan, body);
         if (interview.error) return json(interview, 503, origin);
-        await env.DB.prepare("UPDATE scans SET result_json = json_set(result_json, '$.interview', json(?)) WHERE url = ? AND json_extract(result_json, '$.scannedAt') = ?").bind(JSON.stringify(interview), target.href, scan.scannedAt).run();
         return json(interview, 200, origin);
+      }
+      if (pathname === '/api/discovery') {
+        if (request.method !== 'POST') return json({ message: 'POST 요청이 필요합니다.' }, 405, origin);
+        const session = await sessionOf(request, env);
+        if (!session) return json({ message: '로그인 후 이용할 수 있습니다.' }, 401, origin);
+        const body = await request.json().catch(() => null), target = normalize(body?.url), query = String(body?.query || '').trim();
+        if (!target || query.length < 10 || query.length > 300) return json({ message: '사이트 주소와 10~300자의 소비자 질문을 확인해 주세요.' }, 400, origin);
+        const scan = await readCache(env, target.href, Number(env.CACHE_TTL_HOURS || 24));
+        if (!scan || scan.pageSkipped) return json({ message: '먼저 이 페이지를 검사해 주세요.' }, 400, origin);
+        const usage = await bump(env, `discovery:${today()}:${session.user.id}`, 3);
+        if (usage.exceeded) return json({ message: '오늘 AI 발견 검사를 3회 사용했습니다.' }, 429, origin);
+        const global = await bump(env, 'discovery-global:' + today(), 100);
+        if (global.exceeded) return json({ message: '오늘 서비스의 AI 발견 검사 한도에 도달했습니다.' }, 429, origin);
+        const result = await discoverBrand(env, { query, host: target.host, brand: scan.brand || scan.observed?.brand || '' });
+        return json(result, result.error ? 503 : 200, origin);
       }
       if (pathname === '/api/showcase') {
         return await handleShowcase(env, origin);

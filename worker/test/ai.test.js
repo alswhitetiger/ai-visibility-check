@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { askAI } from '../src/ai.js';
+import { askAI, searchGemini } from '../src/ai.js';
 
 const prompt = { system: 'JSON only', user: 'Example shop' };
 test('missing AI keys skip every provider without a request', async t => {
@@ -30,4 +30,17 @@ test('AI provider error bodies are not returned to callers', async t => {
   const result = await askAI({ GEMINI_API_KEY: 'test' }, prompt);
   assert.equal(result.tried[0].kind, 'auth');
   assert.ok(!JSON.stringify(result).includes('private-provider-detail'));
+});
+
+test('Gemini discovery enables Google Search and returns grounded sources', async t => {
+  let request;
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    request = JSON.parse(init.body);
+    return Response.json({ candidates: [{ content: { parts: [{ text: '추천 결과입니다.' }] }, groundingMetadata: { webSearchQueries: ['친환경 그릇 추천'], groundingChunks: [{ web: { uri: 'https://shop.example/item', title: 'Shop' } }] } }] });
+  });
+  const result = await searchGemini({ GEMINI_API_KEY: 'test' }, '친환경 그릇을 판매하는 쇼핑몰을 추천해 주세요.');
+  assert.deepEqual(request.tools, [{ google_search: {} }]);
+  assert.equal(result.ok, true);
+  assert.equal(result.sources[0].uri, 'https://shop.example/item');
+  assert.equal(result.grounded, true);
 });

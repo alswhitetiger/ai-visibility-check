@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { memberApi, sameOrigin, loginUrl, memberBase, markSessionActive, clearSessionActive } from './member-api';
-import { HistorySparkline, ScoreSummary } from './MemberDashboard';
+import { HistoryComparison, HistorySparkline, ScoreSummary } from './MemberDashboard';
 import PrivacyConsent from './PrivacyConsent';
 import { useAction } from './ui-utils';
 import './account.css';
@@ -14,7 +14,9 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
   const [sites, setSites] = useState([]), [history, setHistory] = useState([]), [more, setMore] = useState(false), [accounts, setAccounts] = useState([]);
   const [siteUrl, setSiteUrl] = useState(''), [siteLabel, setSiteLabel] = useState('');
   const [deleteText, setDeleteText] = useState(''), [deletePassword, setDeletePassword] = useState('');
+  const [compareBase, setCompareBase] = useState(null), [comparison, setComparison] = useState(null);
   const messageRef = useRef(null);
+  useEffect(() => { setCompareBase(null); setComparison(null); }, [user?.id]);
   useEffect(() => { memberApi('/api/member/config').then(setConfig).catch(() => setMessage('회원 서비스를 연결하지 못했습니다. 잠시 후 새로고침해 주세요.')); }, []);
   useEffect(() => {
     let active = true;
@@ -85,6 +87,15 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
       location.assign(memberBase + '?accountDeleted=1');
     });
   }
+  function compareHistory(item) {
+    if (!compareBase) { setCompareBase(item); setComparison(null); return; }
+    if (compareBase.id === item.id) { setCompareBase(null); setComparison(null); return; }
+    if (compareBase.url !== item.url) { setCompareBase(item); setComparison(null); setMessage('같은 주소의 검사끼리 비교할 수 있어 새 기준을 선택했습니다.'); return; }
+    act(async () => {
+      const reports = await Promise.all([compareBase.id,item.id].map(id=>memberApi('/api/member/history?id='+encodeURIComponent(id))));
+      reports.sort((a,b)=>(a.scannedAt || 0)-(b.scannedAt || 0)); setComparison({ before: reports[0], after: reports[1] });
+    });
+  }
   return <section id="account" className="panel account-panel" aria-label="회원과 내 사이트">
     <div className="section-heading"><div><p className="eyebrow">내 가게의 개선 과정을 한곳에</p><h2>{user ? `${user.name}님의 작업 공간` : '로그인하고 검사 기록을 모아 보세요'}</h2></div>{user && <button className="button secondary small" disabled={busy} onClick={() => act(async () => { await memberApi('/api/auth/sign-out', {}); clearSessionActive(); await onRefresh(); })}>로그아웃</button>}</div>
     <p ref={messageRef} role="status" aria-live="polite" className="account-message">{message}</p>
@@ -111,12 +122,12 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
       <div className="social-logins">{Object.entries(providers).map(([p,label]) => <button key={p} className={'button secondary social-'+p} disabled={busy || !config.providers[p]} onClick={() => social(p)}>{label} 로그인{!config.providers[p] && ' · 연결 준비 중'}</button>)}</div>
     </> : <>
       <section className="dashboard-hero"><div><p className="eyebrow">내 대시보드</p><h2>오늘의 개선 상황</h2><p className="muted">사이트를 등록하고 검사 결과의 변화를 이어서 확인하세요.</p></div><div className="dashboard-quota"><strong>{usage?.remaining ?? '—'}</strong><span>오늘 남은 검사</span><small>{usage?.used ?? 0} / {usage?.limit ?? 20}회 사용</small></div></section>
-      <ScoreSummary history={history}/><HistorySparkline history={history}/>
+      <ScoreSummary history={history}/><HistorySparkline history={history}/><HistoryComparison value={comparison} onClear={()=>{setCompareBase(null);setComparison(null);}}/>
       <div className="account-usage"><b>검사 이용량</b><span>한국 시간 자정에 초기화됩니다.</span><p>새 검사와 재검사만 차감합니다. 실패한 검사·저장된 결과 조회는 차감하지 않습니다.</p></div>
       <div className="member-grid"><section><h3>내 사이트 <small>{sites.length} / 50</small></h3><form className="account-form" onSubmit={e => { e.preventDefault(); act(async () => { await memberApi('/api/member/sites', { url: siteUrl, label: siteLabel }); setSiteUrl(''); setSiteLabel(''); await onRefresh(); }); }}><label>사이트 이름<input value={siteLabel} onChange={e=>setSiteLabel(e.target.value)} maxLength={80} placeholder="예: 우리 가게" /></label><label>사이트 주소<input value={siteUrl} onChange={e=>setSiteUrl(e.target.value)} required maxLength={2048} placeholder="https://myshop.com" /></label><button className="button secondary" disabled={busy}>내 사이트에 저장</button></form>
         {!sites.length && <p className="muted">자주 검사하는 주소를 저장해 보세요.</p>}
         <ul className="member-list">{sites.map(s => <li key={s.id}><b>{s.label}</b><span className="muted">{s.url}</span><div><button className="text-button" disabled={busy} onClick={() => onScan(s.url)}>검사하기</button><button className="text-button" disabled={busy} onClick={() => act(async () => { await memberApi('/api/member/sites?id='+encodeURIComponent(s.id), null, 'DELETE'); await onRefresh(); })}>목록에서 삭제</button></div></li>)}</ul>
-      </section><section><h3>검사 이력</h3><p className="muted">최근 90일 · 기록 조회는 횟수를 쓰지 않아요.</p>{!history.length && <p>첫 검사를 완료하면 여기에 기록됩니다.</p>}<ul className="member-list">{history.map(h=><li key={h.id}><b>{h.url}</b><span className="muted">{new Date(h.created_at).toLocaleString('ko-KR')} · AI 정보 {h.aiScore ?? '—'} / 고객 정보 {h.uxScore ?? '—'}</span><div><button className="text-button" onClick={() => onReport(null, h.id)}>결과 보기</button><button className="text-button" onClick={() => act(async () => { await memberApi('/api/member/history?id='+encodeURIComponent(h.id), null, 'DELETE'); await onRefresh(); })}>기록 삭제</button></div></li>)}</ul>{more && <button className="button secondary" disabled={busy} onClick={() => act(async () => { const d = await memberApi('/api/member/history?offset='+history.length); setHistory([...history,...d.items]); setMore(d.hasMore); })}>이전 기록 더 보기</button>}</section></div>
+      </section><section><h3>검사 이력</h3><p className="muted">최근 90일 · 기록 조회는 횟수를 쓰지 않아요.{compareBase && ` ${new Date(compareBase.created_at).toLocaleDateString('ko-KR')} 결과와 비교할 다른 검사를 선택하세요.`}</p>{!history.length && <p>첫 검사를 완료하면 여기에 기록됩니다.</p>}<ul className="member-list">{history.map(h=><li key={h.id}><b>{h.url}</b><span className="muted">{new Date(h.created_at).toLocaleString('ko-KR')} · AI 정보 {h.aiScore ?? '—'} / 고객 정보 {h.uxScore ?? '—'}</span><div><button className="text-button" onClick={() => onReport(null, h.id)}>결과 보기</button><button className="text-button" disabled={busy} onClick={()=>compareHistory(h)}>{compareBase?.id===h.id?'기준 선택됨':'전후 비교'}</button><button className="text-button" onClick={() => act(async () => { await memberApi('/api/member/history?id='+encodeURIComponent(h.id), null, 'DELETE'); await onRefresh(); })}>기록 삭제</button></div></li>)}</ul>{more && <button className="button secondary" disabled={busy} onClick={() => act(async () => { const d = await memberApi('/api/member/history?offset='+history.length); setHistory([...history,...d.items]); setMore(d.hasMore); })}>이전 기록 더 보기</button>}</section></div>
       <details><summary>로그인 계정 연결 및 비밀번호 변경</summary><p className="muted">연결한 계정으로 로그인하면 같은 사이트와 기록을 사용할 수 있어요. 이메일이 같아도 자동으로 합치지 않습니다.</p><div className="social-logins">{Object.entries(providers).map(([p,label]) => { const linked = accounts.some(a=>a.providerId===p); return <button className="button secondary" key={p} disabled={busy || linked || !config.providers[p]} onClick={()=>social(p,true)}>{label} {linked ? '연결됨' : config.providers[p] ? '연결하기' : '연결 준비 중'}</button>; })}</div>{accounts.some(a=>a.providerId==='credential') && <form className="account-form" onSubmit={e=>{e.preventDefault(); const form=e.currentTarget, data=Object.fromEntries(new FormData(form)); act(async()=>{await memberApi('/api/auth/change-password',{...data,revokeOtherSessions:true}); form.reset(); setMessage('비밀번호를 변경했습니다. 다른 기기의 로그인은 해제됩니다.');});}}><label>현재 비밀번호<input name="currentPassword" type="password" required autoComplete="current-password" /></label><label>새 비밀번호<input name="newPassword" type="password" required minLength={12} maxLength={128} autoComplete="new-password" /></label><button className="button secondary" disabled={busy}>비밀번호 변경</button></form>}</details>
       <details className="danger-zone"><summary>회원 탈퇴</summary><p>탈퇴하면 계정, 연결된 로그인, 내 사이트, 검사 이력, 이용 기록, 개선 체크리스트와 공유 보고서가 영구 삭제되며 복구할 수 없습니다.</p><form className="account-form" onSubmit={deleteAccount}><label>확인을 위해 ‘탈퇴’ 입력<input value={deleteText} onChange={e=>setDeleteText(e.target.value)} required autoComplete="off" /></label>{accounts.some(a=>a.providerId==='credential') && <label>현재 비밀번호<input type="password" value={deletePassword} onChange={e=>setDeletePassword(e.target.value)} required autoComplete="current-password" /></label>}<button className="button danger" disabled={busy || deleteText !== '탈퇴' || (accounts.some(a=>a.providerId==='credential') && !deletePassword)}>회원 탈퇴하고 데이터 삭제</button></form></details>
     </>}
