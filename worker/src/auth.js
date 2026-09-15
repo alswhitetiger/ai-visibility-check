@@ -22,7 +22,7 @@ export function authOptions(env) {
     const content = `가게 체크\n\n${text}\n\n본인이 요청하지 않았다면 이 메일을 무시하세요.`;
     if (env.MAIL_SENDER) return env.MAIL_SENDER({ to, subject, text: content });
     const { sendGmail } = await import('./smtp.js');
-    return sendGmail({ user: env.GMAIL_SMTP_USER, password: env.GMAIL_APP_PASSWORD, from: env.AUTH_EMAIL_FROM || `가게 체크 <${env.GMAIL_SMTP_USER}>`, to, subject, text: content });
+    return sendGmail({ user: env.GMAIL_SMTP_USER, password: env.GMAIL_APP_PASSWORD, from: env.AUTH_EMAIL_FROM || `가게체크 <${env.GMAIL_SMTP_USER}>`, to, subject, text: content });
   }
   return {
     appName: '가게 체크', database: env.DB, secret: env.AUTH_SECRET,

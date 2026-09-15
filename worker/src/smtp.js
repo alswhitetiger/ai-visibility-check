@@ -10,6 +10,14 @@ function timeout(promise, ms = 12000) {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('SMTP 응답 시간이 초과되었습니다.')), ms); })]).finally(() => clearTimeout(timer));
 }
+function fromHeader(value, user) {
+  const safe = String(value || '').replace(/[\r\n]/g, '').trim();
+  const match = safe.match(/^(.*?)\s*<([^<>]+)>$/);
+  const name = (match?.[1] || safe || '가게체크').trim();
+  const address = (match?.[2] || user).trim();
+  const display = /[^\x20-\x7e]/.test(name) ? `=?UTF-8?B?${base64(name)}?=` : name;
+  return `${display} <${address}>`;
+}
 
 export async function sendGmail({ user, password, from, to, subject, text }) {
   const socket = connect({ hostname: 'smtp.gmail.com', port: 465 }, { secureTransport: 'on', allowHalfOpen: true });
@@ -47,7 +55,7 @@ export async function sendGmail({ user, password, from, to, subject, text }) {
     await command('DATA\r\n', 354);
     const body = base64(text).match(/.{1,76}/g).join('\r\n');
     const message = [
-      `From: ${from.replace(/[\r\n]/g, '')}`, `To: <${to.replace(/[\r\n]/g, '')}>`,
+      `From: ${fromHeader(from, user)}`, `To: <${to.replace(/[\r\n]/g, '')}>`,
       `Subject: =?UTF-8?B?${base64(subject)}?=`, `Date: ${new Date().toUTCString()}`,
       'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', body,
     ].join('\r\n');

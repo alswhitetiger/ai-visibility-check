@@ -54,7 +54,7 @@ Gmail은 별도 제공자가 아니라 **Google 계정 로그인**이다. 이메
 
 가입 화면에는 수집 목적, 필수·자동 생성 항목, 보유 기간, 동의 거부 권리와 이용 제한을 표시한다. 전체 고지문은 `web/public/privacy-consent.md`에서 관리하며 배포 후 `/ai-visibility-check/privacy-consent.md`로 확인할 수 있다.
 
-현재 운영에서는 사용자가 이전 프로젝트에서 검증한 개인 Gmail SMTP를 사용한다. 회원이 입력한 수신 주소로 보이는 발신 메일은 `GMAIL_SMTP_USER`에 등록된 Gmail 계정이며, 표시 이름은 `AUTH_EMAIL_FROM`으로 설정한다. Google 계정의 2단계 인증과 앱 비밀번호를 준비한 뒤 다음 값을 Worker secret으로 설정한다.
+현재 운영에서는 사용자가 이전 프로젝트에서 검증한 개인 Gmail SMTP를 사용한다. 회원의 받은편지함에는 발신자 이름이 `가게체크`로 표시되고, 메일 상세 정보에는 `GMAIL_SMTP_USER`에 등록된 실제 Gmail 주소가 남는다. 표시 이름은 `AUTH_EMAIL_FROM`으로 설정한다. Google 계정의 2단계 인증과 앱 비밀번호를 준비한 뒤 다음 값을 Worker secret으로 설정한다.
 
 - `GMAIL_SMTP_USER`: 발신 Gmail 주소
 - `GMAIL_APP_PASSWORD`: Gmail 앱 비밀번호
