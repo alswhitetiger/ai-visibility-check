@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { memberApi, sameOrigin, loginUrl, markSessionActive, clearSessionActive } from './member-api';
+import { memberApi, sameOrigin, loginUrl, memberBase, markSessionActive, clearSessionActive } from './member-api';
 import { HistorySparkline, ScoreSummary } from './MemberDashboard';
 import PrivacyConsent from './PrivacyConsent';
 import { useAction } from './ui-utils';
@@ -13,6 +13,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
   const [busy, setBusy] = useState(false), [message, setMessage] = useState('');
   const [sites, setSites] = useState([]), [history, setHistory] = useState([]), [more, setMore] = useState(false), [accounts, setAccounts] = useState([]);
   const [siteUrl, setSiteUrl] = useState(''), [siteLabel, setSiteLabel] = useState('');
+  const [deleteText, setDeleteText] = useState(''), [deletePassword, setDeletePassword] = useState('');
   useEffect(() => { memberApi('/api/member/config').then(setConfig).catch(() => setMessage('회원 서비스를 연결하지 못했습니다. 잠시 후 새로고침해 주세요.')); }, []);
   useEffect(() => {
     let active = true;
@@ -33,6 +34,10 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
       if (mode === 'reset') {
         await memberApi('/api/auth/request-password-reset', { email: fields.email, redirectTo: location.origin + '/ai-visibility-check/login/' });
         setMessage('가입된 이메일이면 비밀번호 재설정 안내를 보내드립니다.'); return;
+      }
+      if (mode === 'find-id') {
+        await memberApi('/api/auth/find-id', { email: fields.email });
+        setMessage('입력한 주소가 가입 이메일이면 아이디 확인 메일을 보내드립니다.'); return;
       }
       if (mode === 'new-password') {
         await memberApi('/api/auth/reset-password', { newPassword: fields.password, token: new URLSearchParams(location.search).get('token') });
@@ -65,6 +70,16 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
       if (data.url) location.assign(data.url);
     });
   }
+  async function deleteAccount(e) {
+    e.preventDefault();
+    if (deleteText !== '탈퇴') { setMessage('확인란에 탈퇴라고 입력해 주세요.'); return; }
+    await act(async () => {
+      const credential = accounts.some(a => a.providerId === 'credential');
+      await memberApi('/api/auth/delete-user', credential ? { password: deletePassword } : {});
+      clearSessionActive(); sessionStorage.removeItem('shop-check:onboarding');
+      location.assign(memberBase + '?accountDeleted=1');
+    });
+  }
   return <section id="account" className="panel account-panel" aria-label="회원과 내 사이트">
     <div className="section-heading"><div><p className="eyebrow">내 가게의 개선 과정을 한곳에</p><h2>{user ? `${user.name}님의 작업 공간` : '로그인하고 검사 기록을 모아 보세요'}</h2></div>{user && <button className="button secondary small" disabled={busy} onClick={() => act(async () => { await memberApi('/api/auth/sign-out', {}); clearSessionActive(); await onRefresh(); })}>로그아웃</button>}</div>
     {!sameOrigin ? <><p>회원가입과 내 사이트 관리는 가게 체크의 로그인 페이지에서 이용할 수 있어요.</p><a className="button primary" href={loginUrl}>로그인 / 회원가입 →</a></> : !user ? <>
@@ -79,13 +94,14 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
         <button type="button" className="text-button" disabled={busy || !verificationEmail} onClick={() => act(() => memberApi('/api/auth/email-otp/send-verification-otp', { email: verificationEmail, type: 'email-verification' }), '새 인증번호를 보냈습니다.')}>인증번호 다시 받기</button>
       </form> : <form className="account-form" onSubmit={emailSubmit} key={mode}>
         {mode === 'signup' && <label>이름 또는 닉네임<input name="name" required maxLength={80} autoComplete="nickname" /></label>}
+        {mode === 'find-id' && <p className="muted">이메일 회원의 아이디는 가입할 때 인증한 이메일 주소입니다. 기억나는 주소를 입력하면 가입된 주소에만 확인 메일을 보냅니다. 소셜 회원은 구글·카카오·네이버 로그인 버튼을 이용해 주세요.</p>}
         {mode !== 'new-password' && <label>이메일<input type="email" name="email" required maxLength={254} autoComplete="email" placeholder="name@example.com" /></label>}
-        {mode !== 'reset' && <label>비밀번호{mode !== 'login' && ' · 12자 이상'}<input type="password" name="password" required minLength={mode === 'login' ? 1 : 12} maxLength={128} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>}
+        {!['reset','find-id'].includes(mode) && <label>비밀번호{mode !== 'login' && ' · 12자 이상'}<input type="password" name="password" required minLength={mode === 'login' ? 1 : 12} maxLength={128} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>}
         {mode === 'signup' && <><p className="muted">인증 메일의 발신자 이름은 ‘가게체크’로 표시됩니다. 받은편지함과 스팸함을 확인해 주세요.</p><PrivacyConsent checkbox /></>}
-        <button className="button primary" disabled={busy || !config.emailReady || (mode === 'signup' && !config.emailVerification)}>{busy ? '처리 중…' : mode === 'signup' ? '인증번호 받고 가입하기' : mode === 'reset' ? '재설정 메일 받기' : mode === 'new-password' ? '새 비밀번호 저장' : '로그인'}</button>
+        <button className="button primary" disabled={busy || !config.emailReady || (mode === 'signup' && !config.emailVerification)}>{busy ? '처리 중…' : mode === 'signup' ? '인증번호 받고 가입하기' : mode === 'find-id' ? '아이디 확인 메일 받기' : mode === 'reset' ? '재설정 메일 받기' : mode === 'new-password' ? '새 비밀번호 저장' : '로그인'}</button>
       </form>
       }
-      {config.emailVerification ? <div className="account-help-buttons">{mode !== 'verify' && <button className="text-button" onClick={() => setMode('verify')}>이미 인증번호를 받았나요?</button>}<button className="text-button" onClick={() => setMode('reset')}>비밀번호를 잊었나요?</button></div> : <p className="email-unavailable">이메일 회원가입은 인증 메일 서비스 연결 후 사용할 수 있습니다. 아래 소셜 로그인은 계속 이용할 수 있습니다.</p>}
+      {config.emailVerification ? <div className="account-help-buttons">{mode !== 'verify' && <button className="text-button" onClick={() => setMode('verify')}>이미 인증번호를 받았나요?</button>}<button className="text-button" onClick={() => setMode('find-id')}>아이디를 잊었나요?</button><button className="text-button" onClick={() => setMode('reset')}>비밀번호를 잊었나요?</button></div> : <p className="email-unavailable">이메일 회원가입은 인증 메일 서비스 연결 후 사용할 수 있습니다. 아래 소셜 로그인은 계속 이용할 수 있습니다.</p>}
       <div className="social-logins">{Object.entries(providers).map(([p,label]) => <button key={p} className={'button secondary social-'+p} disabled={busy || !config.providers[p]} onClick={() => social(p)}>{label} 로그인{!config.providers[p] && ' · 연결 준비 중'}</button>)}</div>
     </> : <>
       <section className="dashboard-hero"><div><p className="eyebrow">내 대시보드</p><h2>오늘의 개선 상황</h2><p className="muted">사이트를 등록하고 검사 결과의 변화를 이어서 확인하세요.</p></div><div className="dashboard-quota"><strong>{usage?.remaining ?? '—'}</strong><span>오늘 남은 검사</span><small>{usage?.used ?? 0} / {usage?.limit ?? 20}회 사용</small></div></section>
@@ -96,6 +112,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
         <ul className="member-list">{sites.map(s => <li key={s.id}><b>{s.label}</b><span className="muted">{s.url}</span><div><button className="text-button" disabled={busy} onClick={() => onScan(s.url)}>검사하기</button><button className="text-button" disabled={busy} onClick={() => act(async () => { await memberApi('/api/member/sites?id='+encodeURIComponent(s.id), null, 'DELETE'); await onRefresh(); })}>목록에서 삭제</button></div></li>)}</ul>
       </section><section><h3>검사 이력</h3><p className="muted">최근 90일 · 기록 조회는 횟수를 쓰지 않아요.</p>{!history.length && <p>첫 검사를 완료하면 여기에 기록됩니다.</p>}<ul className="member-list">{history.map(h=><li key={h.id}><b>{h.url}</b><span className="muted">{new Date(h.created_at).toLocaleString('ko-KR')} · AI 정보 {h.aiScore ?? '—'} / 고객 정보 {h.uxScore ?? '—'}</span><div><button className="text-button" onClick={() => onReport(null, h.id)}>결과 보기</button><button className="text-button" onClick={() => act(async () => { await memberApi('/api/member/history?id='+encodeURIComponent(h.id), null, 'DELETE'); await onRefresh(); })}>기록 삭제</button></div></li>)}</ul>{more && <button className="button secondary" disabled={busy} onClick={() => act(async () => { const d = await memberApi('/api/member/history?offset='+history.length); setHistory([...history,...d.items]); setMore(d.hasMore); })}>이전 기록 더 보기</button>}</section></div>
       <details><summary>로그인 계정 연결 및 비밀번호 변경</summary><p className="muted">연결한 계정으로 로그인하면 같은 사이트와 기록을 사용할 수 있어요. 이메일이 같아도 자동으로 합치지 않습니다.</p><div className="social-logins">{Object.entries(providers).map(([p,label]) => { const linked = accounts.some(a=>a.providerId===p); return <button className="button secondary" key={p} disabled={busy || linked || !config.providers[p]} onClick={()=>social(p,true)}>{label} {linked ? '연결됨' : config.providers[p] ? '연결하기' : '연결 준비 중'}</button>; })}</div>{accounts.some(a=>a.providerId==='credential') && <form className="account-form" onSubmit={e=>{e.preventDefault(); const form=e.currentTarget, data=Object.fromEntries(new FormData(form)); act(async()=>{await memberApi('/api/auth/change-password',{...data,revokeOtherSessions:true}); form.reset(); setMessage('비밀번호를 변경했습니다. 다른 기기의 로그인은 해제됩니다.');});}}><label>현재 비밀번호<input name="currentPassword" type="password" required autoComplete="current-password" /></label><label>새 비밀번호<input name="newPassword" type="password" required minLength={12} maxLength={128} autoComplete="new-password" /></label><button className="button secondary" disabled={busy}>비밀번호 변경</button></form>}</details>
+      <details className="danger-zone"><summary>회원 탈퇴</summary><p>탈퇴하면 계정, 연결된 로그인, 내 사이트, 검사 이력, 이용 기록, 개선 체크리스트와 공유 보고서가 영구 삭제되며 복구할 수 없습니다.</p><form className="account-form" onSubmit={deleteAccount}><label>확인을 위해 ‘탈퇴’ 입력<input value={deleteText} onChange={e=>setDeleteText(e.target.value)} required autoComplete="off" /></label>{accounts.some(a=>a.providerId==='credential') && <label>현재 비밀번호<input type="password" value={deletePassword} onChange={e=>setDeletePassword(e.target.value)} required autoComplete="current-password" /></label>}<button className="button danger" disabled={busy || deleteText !== '탈퇴' || (accounts.some(a=>a.providerId==='credential') && !deletePassword)}>회원 탈퇴하고 데이터 삭제</button></form></details>
     </>}
     <p role="status" className="account-message">{message}</p>
     {mode !== 'signup' && <details className="privacy-note"><summary>개인정보 수집·이용 안내</summary><PrivacyConsent /></details>}

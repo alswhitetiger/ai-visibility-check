@@ -8,7 +8,8 @@ import { authOptions } from '../src/auth.js';
 
 function database() {
   const sqlite = new DatabaseSync(':memory:');
-  for (const file of ['../schema.sql', '../migrations/0001-auth.sql', '../migrations/0002-members.sql']) sqlite.exec(readFileSync(new URL(file, import.meta.url), 'utf8'));
+  sqlite.exec('PRAGMA foreign_keys = ON');
+  for (const file of ['../schema.sql', '../migrations/0001-auth.sql', '../migrations/0002-members.sql', '../migrations/0003-shared-reports.sql', '../migrations/0004-improvement-checks.sql']) sqlite.exec(readFileSync(new URL(file, import.meta.url), 'utf8'));
   const db = {
     prepare(sql) {
       let values = [];
@@ -76,6 +77,34 @@ test('verified email cannot sign up again or replace its password', async t => {
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM user WHERE lower(email) = lower(?)').get(email).n, 1);
   assert.equal((await request('/api/auth/sign-in/email', { body: { email, password: original } })).status, 200);
   assert.equal((await request('/api/auth/sign-in/email', { body: { email, password: replacement } })).status, 401);
+});
+test('find-id only emails a verified account and returns the same public response', async t => {
+  const { env, sqlite, request } = setup(t), sent = [];
+  env.MAIL_SENDER = async message => sent.push(message);
+  const email = 'find-me@example.test';
+  await request('/api/auth/sign-up/email', { body: { name: 'Find Me', email, password: 'test-only-long-password' } });
+  sqlite.prepare('UPDATE user SET emailVerified = 1 WHERE email = ?').run(email);
+  const found = await request('/api/auth/find-id', { body: { email } });
+  const missing = await request('/api/auth/find-id', { body: { email: 'missing@example.test' } });
+  assert.equal(found.status, 200); assert.equal(missing.status, 200);
+  assert.deepEqual(await found.json(), await missing.json());
+  assert.equal(sent.length, 1); assert.equal(sent[0].to, email);
+  assert.match(sent[0].text, /로그인 아이디/);
+});
+test('account deletion removes the user and every account-owned record', async t => {
+  const { sqlite, request, signup } = setup(t), email = 'leave@example.test', password = 'test-only-long-password';
+  const member = await signup(email), id = member.data.user.id, now = Date.now();
+  sqlite.prepare('INSERT INTO user_sites VALUES (?,?,?,?,?)').run('site', id, 'https://shop.example', 'Shop', now);
+  sqlite.prepare('INSERT INTO scan_history VALUES (?,?,?,?,?)').run('history', id, 'https://shop.example', '{}', now);
+  sqlite.prepare('INSERT INTO scan_requests VALUES (?,?,?,?,?)').run('request', id, '2026-09-15', 'done', now);
+  sqlite.prepare('INSERT INTO shared_reports VALUES (?,?,?,?,?)').run('share', id, '{}', now, now + 10000);
+  sqlite.prepare('INSERT INTO improvement_checks VALUES (?,?,?,?,?)').run(id, 'https://shop.example', 'title', 1, now);
+  sqlite.prepare('INSERT INTO verification VALUES (?,?,?,?,?,?)').run('verify', `email-verification-otp-${email}`, 'hash', new Date(now + 10000).toISOString(), new Date(now).toISOString(), new Date(now).toISOString());
+  const deleted = await request('/api/auth/delete-user', { body: { password }, cookie: member.cookie });
+  assert.equal(deleted.status, 200, await deleted.clone().text());
+  for (const table of ['user','account','session','user_sites','scan_history','scan_requests','shared_reports','improvement_checks','verification']) {
+    assert.equal(sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get().n, 0, table);
+  }
 });
 test('email signup stores a hash, session works, wrong password fails and signout revokes cookie', async t => {
   const { sqlite, request, signup } = setup(t);

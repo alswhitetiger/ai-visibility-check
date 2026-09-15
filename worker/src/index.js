@@ -5,7 +5,7 @@ import { askAI, brandProbePrompt } from './ai.js';
 import { generateDraft } from './draft.js';
 import { generateQuestions } from './questions.js';
 import { generateInterview } from './interview.js';
-import { createAuth, sessionOf, providerStatus, mailReady } from './auth.js';
+import { createAuth, sessionOf, providerStatus, mailReady, sendAuthEmail } from './auth.js';
 import { quota, reserveScan, releaseScan, saveHistory, memberRoute, publicUrl, readSharedReport } from './members.js';
 
 const json = (data, status, origin) =>
@@ -329,6 +329,16 @@ export default {
       }
       if (pathname.startsWith('/api/auth/')) {
         if (!env.AUTH_SECRET) return json({ message: '로그인 설정을 준비 중입니다.' }, 503, origin);
+        if (pathname === '/api/auth/find-id') {
+          if (!mailReady(env)) return json({ code: 'EMAIL_SERVICE_UNAVAILABLE', message: '인증 메일 서비스를 준비 중입니다.' }, 503, origin);
+          const email = String((await request.json().catch(() => ({}))).email || '').trim().toLowerCase();
+          if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ code: 'INVALID_EMAIL', message: '이메일 주소를 확인해 주세요.' }, 400, origin);
+          const attempt = await bump(env, `find-id:${new Date().toISOString().slice(0, 13)}:${await anonymousBucket(request)}`, 5);
+          if (attempt.exceeded) return json({ code: 'TOO_MANY_REQUESTS', message: '요청 횟수를 초과했습니다. 잠시 후 다시 시도해 주세요.' }, 429, origin);
+          const user = await env.DB.prepare('SELECT email FROM user WHERE email = ? COLLATE NOCASE AND emailVerified = 1').bind(email).first();
+          if (user && !user.email.endsWith('@users.invalid')) await sendAuthEmail(env, user.email, '가게 체크 아이디 확인', `이 이메일 주소가 가게 체크 로그인 아이디입니다.\n\n로그인: ${env.AUTH_BASE_URL}/ai-visibility-check/login/`);
+          return json({ success: true, message: '입력한 주소가 가입 이메일이면 아이디 확인 메일을 보내드립니다.' }, 200, origin);
+        }
         if (pathname === '/api/auth/sign-up/email') {
           if (!mailReady(env) && env.ALLOW_UNVERIFIED_EMAIL_SIGNUP !== 'true') return json({ code: 'EMAIL_SERVICE_UNAVAILABLE', message: '인증 메일 서비스를 준비 중입니다.' }, 503, origin);
           const email = String((await request.clone().json().catch(() => ({}))).email || '').trim();

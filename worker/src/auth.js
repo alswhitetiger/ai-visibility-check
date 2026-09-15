@@ -7,6 +7,13 @@ export function providerStatus(env) {
 }
 export const mailReady = env => !!(env.GMAIL_SMTP_USER && env.GMAIL_APP_PASSWORD) || typeof env.MAIL_SENDER === 'function';
 
+export async function sendAuthEmail(env, to, subject, text) {
+  const content = `가게 체크\n\n${text}\n\n본인이 요청하지 않았다면 이 메일을 무시하세요.`;
+  if (env.MAIL_SENDER) return env.MAIL_SENDER({ to, subject, text: content });
+  const { sendGmail } = await import('./smtp.js');
+  return sendGmail({ user: env.GMAIL_SMTP_USER, password: env.GMAIL_APP_PASSWORD, from: env.AUTH_EMAIL_FROM || `가게체크 <${env.GMAIL_SMTP_USER}>`, to, subject, text: content });
+}
+
 export function authOptions(env) {
   const socialProviders = {};
   for (const [p, enabled] of Object.entries(providerStatus(env))) {
@@ -18,12 +25,7 @@ export function authOptions(env) {
     mapProfileToUser: profile => ({ email: `kakao-${profile.id}@users.invalid` }),
   });
   const emailReady = mailReady(env);
-  async function sendEmail(to, subject, text) {
-    const content = `가게 체크\n\n${text}\n\n본인이 요청하지 않았다면 이 메일을 무시하세요.`;
-    if (env.MAIL_SENDER) return env.MAIL_SENDER({ to, subject, text: content });
-    const { sendGmail } = await import('./smtp.js');
-    return sendGmail({ user: env.GMAIL_SMTP_USER, password: env.GMAIL_APP_PASSWORD, from: env.AUTH_EMAIL_FROM || `가게체크 <${env.GMAIL_SMTP_USER}>`, to, subject, text: content });
-  }
+  const sendEmail = (to, subject, text) => sendAuthEmail(env, to, subject, text);
   return {
     appName: '가게 체크', database: env.DB, secret: env.AUTH_SECRET,
     baseURL: env.AUTH_BASE_URL, basePath: '/api/auth',
@@ -41,6 +43,9 @@ export function authOptions(env) {
       })],
     } : {}),
     socialProviders,
+    user: { deleteUser: { enabled: true, beforeDelete: user => env.DB.prepare(
+      'DELETE FROM verification WHERE value = ? OR identifier IN (?, ?, ?)'
+    ).bind(user.id, `email-verification-otp-${user.email}`, `sign-in-otp-${user.email}`, `forget-password-otp-${user.email}`).run() } },
     account: { encryptOAuthTokens: true, accountLinking: { enabled: true, disableImplicitLinking: true, allowDifferentEmails: true, allowUnlinkingAll: false } },
     session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 },
     rateLimit: { enabled: true, storage: 'database', window: 60, max: 40,
