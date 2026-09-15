@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { memberApi, sameOrigin, loginUrl, memberBase, markSessionActive, clearSessionActive } from './member-api';
 import { HistorySparkline, ScoreSummary } from './MemberDashboard';
 import PrivacyConsent from './PrivacyConsent';
@@ -14,6 +14,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
   const [sites, setSites] = useState([]), [history, setHistory] = useState([]), [more, setMore] = useState(false), [accounts, setAccounts] = useState([]);
   const [siteUrl, setSiteUrl] = useState(''), [siteLabel, setSiteLabel] = useState('');
   const [deleteText, setDeleteText] = useState(''), [deletePassword, setDeletePassword] = useState('');
+  const messageRef = useRef(null);
   useEffect(() => { memberApi('/api/member/config').then(setConfig).catch(() => setMessage('회원 서비스를 연결하지 못했습니다. 잠시 후 새로고침해 주세요.')); }, []);
   useEffect(() => {
     let active = true;
@@ -63,6 +64,10 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
     if (params.get('token')) setMode('new-password');
     if (params.get('error')) setMessage('로그인 연결을 완료하지 못했습니다. 기존 계정이 있다면 먼저 로그인한 뒤 연결해 주세요.');
   }, []);
+  useEffect(() => {
+    if (!message) return;
+    messageRef.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+  }, [message]);
   async function social(provider, link = false) {
     await act(async () => {
       markSessionActive();
@@ -82,6 +87,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
   }
   return <section id="account" className="panel account-panel" aria-label="회원과 내 사이트">
     <div className="section-heading"><div><p className="eyebrow">내 가게의 개선 과정을 한곳에</p><h2>{user ? `${user.name}님의 작업 공간` : '로그인하고 검사 기록을 모아 보세요'}</h2></div>{user && <button className="button secondary small" disabled={busy} onClick={() => act(async () => { await memberApi('/api/auth/sign-out', {}); clearSessionActive(); await onRefresh(); })}>로그아웃</button>}</div>
+    <p ref={messageRef} role="status" aria-live="polite" className="account-message">{message}</p>
     {!sameOrigin ? <><p>회원가입과 내 사이트 관리는 가게 체크의 로그인 페이지에서 이용할 수 있어요.</p><a className="button primary" href={loginUrl}>로그인 / 회원가입 →</a></> : !user ? <>
       <p className="muted">내 사이트를 저장하고 최근 90일의 검사 기록을 확인하세요. 계정당 하루 20회, 한국 시간 자정에 초기화됩니다.</p>
       <div className="account-tabs"><button className={'button '+(mode === 'login' ? 'primary' : 'secondary')} onClick={() => { setMode('login'); setMessage(''); }}>이메일 로그인</button><button className={'button '+(['signup','verify'].includes(mode) ? 'primary' : 'secondary')} onClick={() => { setMode('signup'); setMessage(''); }}>이메일 회원가입</button></div>
@@ -114,7 +120,6 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
       <details><summary>로그인 계정 연결 및 비밀번호 변경</summary><p className="muted">연결한 계정으로 로그인하면 같은 사이트와 기록을 사용할 수 있어요. 이메일이 같아도 자동으로 합치지 않습니다.</p><div className="social-logins">{Object.entries(providers).map(([p,label]) => { const linked = accounts.some(a=>a.providerId===p); return <button className="button secondary" key={p} disabled={busy || linked || !config.providers[p]} onClick={()=>social(p,true)}>{label} {linked ? '연결됨' : config.providers[p] ? '연결하기' : '연결 준비 중'}</button>; })}</div>{accounts.some(a=>a.providerId==='credential') && <form className="account-form" onSubmit={e=>{e.preventDefault(); const form=e.currentTarget, data=Object.fromEntries(new FormData(form)); act(async()=>{await memberApi('/api/auth/change-password',{...data,revokeOtherSessions:true}); form.reset(); setMessage('비밀번호를 변경했습니다. 다른 기기의 로그인은 해제됩니다.');});}}><label>현재 비밀번호<input name="currentPassword" type="password" required autoComplete="current-password" /></label><label>새 비밀번호<input name="newPassword" type="password" required minLength={12} maxLength={128} autoComplete="new-password" /></label><button className="button secondary" disabled={busy}>비밀번호 변경</button></form>}</details>
       <details className="danger-zone"><summary>회원 탈퇴</summary><p>탈퇴하면 계정, 연결된 로그인, 내 사이트, 검사 이력, 이용 기록, 개선 체크리스트와 공유 보고서가 영구 삭제되며 복구할 수 없습니다.</p><form className="account-form" onSubmit={deleteAccount}><label>확인을 위해 ‘탈퇴’ 입력<input value={deleteText} onChange={e=>setDeleteText(e.target.value)} required autoComplete="off" /></label>{accounts.some(a=>a.providerId==='credential') && <label>현재 비밀번호<input type="password" value={deletePassword} onChange={e=>setDeletePassword(e.target.value)} required autoComplete="current-password" /></label>}<button className="button danger" disabled={busy || deleteText !== '탈퇴' || (accounts.some(a=>a.providerId==='credential') && !deletePassword)}>회원 탈퇴하고 데이터 삭제</button></form></details>
     </>}
-    <p role="status" className="account-message">{message}</p>
     {mode !== 'signup' && <details className="privacy-note"><summary>개인정보 수집·이용 안내</summary><PrivacyConsent /></details>}
   </section>;
 }
