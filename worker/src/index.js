@@ -62,6 +62,8 @@ async function bump(env, key, limit) {
   return { count: row?.count ?? 1, exceeded: (row?.count ?? 1) > limit };
 }
 
+const undoBump = (env, key) => env.DB.prepare('UPDATE usage SET count = MAX(count - 1, 0) WHERE key = ?').bind(key).run();
+
 async function readCache(env, url, ttlHours) {
   const row = await env.DB.prepare('SELECT * FROM scans WHERE url = ?').bind(url).first();
   if (!row) return null;
@@ -410,11 +412,13 @@ export default {
         if (!target || query.length < 10 || query.length > 300) return json({ message: '사이트 주소와 10~300자의 소비자 질문을 확인해 주세요.' }, 400, origin);
         const scan = await readCache(env, target.href, Number(env.CACHE_TTL_HOURS || 24));
         if (!scan || scan.pageSkipped) return json({ message: '먼저 이 페이지를 검사해 주세요.' }, 400, origin);
-        const usage = await bump(env, `discovery:${today()}:${session.user.id}`, 3);
-        if (usage.exceeded) return json({ message: '오늘 AI 발견 검사를 3회 사용했습니다.' }, 429, origin);
-        const global = await bump(env, 'discovery-global:' + today(), 100);
-        if (global.exceeded) return json({ message: '오늘 서비스의 AI 발견 검사 한도에 도달했습니다.' }, 429, origin);
+        const personalKey = `discovery:${today()}:${session.user.id}`, globalKey = 'discovery-global:' + today();
+        const usage = await bump(env, personalKey, 3);
+        if (usage.exceeded) { await undoBump(env, personalKey); return json({ message: '오늘 AI 발견 검사를 3회 사용했습니다.' }, 429, origin); }
+        const global = await bump(env, globalKey, 100);
+        if (global.exceeded) { await Promise.all([undoBump(env, personalKey), undoBump(env, globalKey)]); return json({ message: '오늘 서비스의 AI 발견 검사 한도에 도달했습니다.' }, 429, origin); }
         const result = await discoverBrand(env, { query, host: target.host, brand: scan.brand || scan.observed?.brand || '' });
+        if (result.error) await Promise.all([undoBump(env, personalKey), undoBump(env, globalKey)]);
         return json(result, result.error ? 503 : 200, origin);
       }
       if (pathname === '/api/showcase') {

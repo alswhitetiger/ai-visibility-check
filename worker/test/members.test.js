@@ -195,7 +195,9 @@ test('operator answers stay out of the shared scan cache and discovery requires 
   env.GEMINI_API_KEY = 'test';
   const result = { url: 'https://shop.example/', host: 'shop.example', brand: 'Test Shop', version: '2026-09-09.1', scannedAt: Date.now(), aiScore: 50, uxScore: 50, quadrant: 'balanced', observed: { title: 'Test Shop' }, checks: [] };
   sqlite.prepare('INSERT INTO scans VALUES (?,?,?,?,?,?,?,?,?)').run(result.url, result.host, 50, 50, result.quadrant, JSON.stringify(result), null, null, Date.now());
+  let aiFails = false;
   t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    if (aiFails) return new Response('quota', { status: 429 });
     const body = JSON.parse(init.body);
     return Response.json({ candidates: [{ content: { parts: [{ text: body.generationConfig?.responseMimeType ? JSON.stringify({ about: '소개', faq: [1,2,3].map(i=>({ question: `질문${i}`, answer: `답변${i}` })) }) : 'Test Shop을 추천합니다.' }] } }] });
   });
@@ -206,6 +208,11 @@ test('operator answers stay out of the shared scan cache and discovery requires 
   const discovered = await request('/api/discovery', { ...member, body: { url: result.url, query: '매일 쓰기 좋은 국내 그릇 쇼핑몰을 추천해 주세요.' } });
   assert.equal(discovered.status, 200, await discovered.clone().text());
   assert.equal((await discovered.json()).found, true);
+  const usageKey = `discovery:${new Date().toISOString().slice(0,10)}:${member.data.user.id}`;
+  assert.equal(sqlite.prepare('SELECT count FROM usage WHERE key = ?').get(usageKey).count, 1);
+  aiFails = true;
+  assert.equal((await request('/api/discovery', { ...member, body: { url: result.url, query: '매일 쓰기 좋은 국내 그릇 쇼핑몰을 다시 추천해 주세요.' } })).status, 503);
+  assert.equal(sqlite.prepare('SELECT count FROM usage WHERE key = ?').get(usageKey).count, 1);
 });
 
 test('sharing requires owned history, preserves server result and expires without consuming scans', async t => {
