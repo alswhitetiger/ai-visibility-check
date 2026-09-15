@@ -197,8 +197,7 @@ test('operator answers stay out of the shared scan cache and discovery requires 
   sqlite.prepare('INSERT INTO scans VALUES (?,?,?,?,?,?,?,?,?)').run(result.url, result.host, 50, 50, result.quadrant, JSON.stringify(result), null, null, Date.now());
   t.mock.method(globalThis, 'fetch', async (_url, init) => {
     const body = JSON.parse(init.body);
-    if (body.tools) return Response.json({ candidates: [{ content: { parts: [{ text: 'Test Shop을 추천합니다.' }] }, groundingMetadata: { groundingChunks: [{ web: { uri: 'https://shop.example/', title: 'Test Shop' } }] } }] });
-    return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ about: '소개', faq: [1,2,3].map(i=>({ question: `질문${i}`, answer: `답변${i}` })) }) }] } }] });
+    return Response.json({ candidates: [{ content: { parts: [{ text: body.generationConfig?.responseMimeType ? JSON.stringify({ about: '소개', faq: [1,2,3].map(i=>({ question: `질문${i}`, answer: `답변${i}` })) }) : 'Test Shop을 추천합니다.' }] } }] });
   });
   const answers = ['offering','details','cost','delivery','support'].map(id=>({ id, answer: `${id} 답변` }));
   assert.equal((await request('/api/interview', { body: { url: result.url, answers } })).status, 200);

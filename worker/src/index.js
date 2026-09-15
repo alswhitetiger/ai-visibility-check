@@ -356,7 +356,7 @@ export default {
         return await memberRoute(request, env, session.user, json, origin);
       }
       if (pathname === '/api/health') {
-        return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now(), anonymousScan: env.ANON_SCAN_ENABLED === 'true', aiProviders: { gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY, anthropic: !!env.ANTHROPIC_API_KEY }, features: { googleSearchDiscovery: !!env.GEMINI_API_KEY }, cache: { enabled: !!env.DB, ttlHours: Number(env.CACHE_TTL_HOURS || 24) } }, 200, origin);
+        return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now(), anonymousScan: env.ANON_SCAN_ENABLED === 'true', aiProviders: { gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY, anthropic: !!env.ANTHROPIC_API_KEY }, features: { brandBlindDiscovery: !!env.GEMINI_API_KEY }, cache: { enabled: !!env.DB, ttlHours: Number(env.CACHE_TTL_HOURS || 24) } }, 200, origin);
       }
       if (pathname === '/api/extension/scan' && request.method === 'POST') {
         const body = await request.json().catch(() => null);
