@@ -134,7 +134,7 @@ AI 호출 없이 규칙 기반 엔진만 쓰므로 비용이 들지 않는다.
 | GitHub Pages / Actions | 0원 |
 | Cloudflare Workers + D1 | 0원 (무료 한도 내) |
 | Gemini 생성 | API 프로젝트의 무료·유료 사용량 정책 적용 |
-| Gemini Google 검색 발견 검사 | 모델이 실행한 검색 쿼리 수에 따라 해당 API 프로젝트 과금 정책 적용 · 회원당 하루 3회 제한 |
+| Gemini Google 검색 발견 검사 | `gemini-2.5-flash` 무료 티어 하루 500회 범위 · 서비스 전체 하루 100회, 회원당 하루 3회 제한 |
 | OpenAI / Anthropic | 현재 키를 등록하지 않아 미사용 |
 
 ## 과거 이슈와 현재 상태 — Gemini 지역 제한
@@ -174,5 +174,6 @@ User location is not supported for the API use.
 
 ## 모델
 
-`gemini-2.5-flash-lite` 는 신규 사용자에게 중단됐다(404). Google 안내에 따라
-`gemini-3.5-flash-lite` 를 쓴다.
+일반 AI 답변은 운영 재검사에 성공한 `gemini-3.5-flash-lite`를 쓴다. Google 검색
+발견 검사는 3.x 무료 티어에서 검색 근거 기능을 사용할 수 없어 `gemini-2.5-flash`를
+별도로 쓴다. 서비스 전체 한도를 하루 100회로 두어 공식 무료 한도보다 낮게 제한한다.

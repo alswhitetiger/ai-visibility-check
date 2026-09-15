@@ -41,6 +41,7 @@ test('Gemini discovery enables Google Search and returns grounded sources', asyn
   const result = await searchGemini({ GEMINI_API_KEY: 'test' }, '친환경 그릇을 판매하는 쇼핑몰을 추천해 주세요.');
   assert.deepEqual(request.tools, [{ google_search: {} }]);
   assert.equal(result.ok, true);
+  assert.equal(result.model, 'gemini-2.5-flash');
   assert.equal(result.sources[0].uri, 'https://shop.example/item');
   assert.equal(result.grounded, true);
 });

@@ -130,7 +130,9 @@ export async function askAI(env, { system, user }) {
 
 export async function searchGemini(env, query) {
   if (!env.GEMINI_API_KEY) return { ok: false, kind: 'no_key' };
-  const model = env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+  // Gemini 3.x Google 검색은 유료 티어 전용이다. 검색 기능은 무료 티어에서도
+  // 근거 검색을 지원하는 2.5 Flash를 별도로 사용한다.
+  const model = env.GEMINI_SEARCH_MODEL || 'gemini-2.5-flash';
   try {
     const data = await post(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
