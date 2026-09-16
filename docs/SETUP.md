@@ -13,16 +13,18 @@
 
 운영 Worker에는 `GEMINI_API_KEY`와 `JUDGE_CODE`가 secret으로 등록되어 있다. 현재 운영 방침은 Gemini 단독 사용이며 OpenAI·Anthropic 폴백은 연결하지 않는다. 키가 없어도 규칙 기반 진단은 정상 동작하고 AI 실제 응답 영역만 미수집으로 표시된다.
 
-`wrangler.toml` 에 `AUTH_REQUIRED = "true"` 가 설정돼 있어 실제 URL 검사는
-로그인이 필요하다. 프론트(GitHub Pages)와 API(Workers)가 서로 다른 도메인이라
-세션 쿠키를 프론트에서 바로 읽을 수 없다. 그래서 프론트는 로그인 여부를
-확인하려 시도하지 않고 곧바로 "로그인하고 검사하기" 안내를 띄우며, 그 링크는
-API와 같은 도메인(`workers.dev/ai-visibility-check/login/`)에서 로그인을
-마치고 그 도메인 위에서 검사를 이어가는 구조다. `docs/SUBMISSION.md` 의
-심사 체험 안내도 이에 맞춰 두었다. 로그인 없이 실제 URL을 검사하게 하려면
-`AUTH_REQUIRED` 를 `false` 로 되돌리거나(계정·이력 기능은 비활성화됨), 크로스
-도메인 세션(예: `SameSite=None; Secure` 쿠키 + CORS `Allow-Credentials`)을
-새로 구현해야 한다.
+`wrangler.toml` 에 `AUTH_REQUIRED = "true"` 가 설정돼 있지만, 같은 파일의
+`ANON_SCAN_ENABLED = "true"` / `ANON_DAILY_LIMIT = "1"` 덕분에 로그인하지
+않은 방문자도 하루 1회(IP 기준) 실제 URL 검사를 익명으로 실행할 수 있다.
+그 한도를 넘거나 익명 허용이 꺼져 있으면 서버가 `LOGIN_REQUIRED` 를 반환하고,
+프론트는 그때만 "로그인하고 검사하기" 안내를 띄운다. 프론트(GitHub Pages)와
+API(Workers)가 서로 다른 도메인이라 세션 쿠키를 프론트에서 바로 읽을 수
+없으므로, 크로스 오리진에서는 로그인 여부를 미리 확인하지 않고 곧바로 검사
+요청을 보낸 뒤 서버 응답으로만 로그인 필요 여부를 판단한다. 로그인 후에는
+API와 같은 도메인(`workers.dev/ai-visibility-check/login/`)에서 계정 기능
+(사이트 저장·이력·공유 보고서)을 이어서 쓴다. `docs/SUBMISSION.md` 의 심사
+체험 안내도 이 구조(예시·익명 검사는 로그인 불필요, 계정 기능만 로그인 필요)에
+맞춰 두었다.
 
 ## 0단계 — 배포 방식 (완료됨)
 
