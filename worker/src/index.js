@@ -382,12 +382,13 @@ export default {
         const scan = await readCache(env, target.href, Number(env.CACHE_TTL_HOURS || 24));
         if (!scan || scan.pageSkipped) return json({ message: '먼저 이 페이지를 검사해 주세요. 검사 결과는 24시간 동안 사용할 수 있습니다.' }, 400, origin);
         if (scan[field]) return json({ ...scan[field], cached: true }, 200, origin);
-        const usage = await bump(env, 'draft:' + today() + ':' + await anonymousBucket(request), 5);
-        if (usage.exceeded) return json({ message: '오늘 AI 초안·고객 질문 공동 한도 5회를 사용했습니다. 저장된 결과는 계속 볼 수 있습니다.' }, 429, origin);
-        const global = await bump(env, 'draft-global:' + today(), 100);
-        if (global.exceeded) return json({ message: '오늘 서비스의 AI 초안 한도에 도달했습니다.' }, 429, origin);
+        const personalKey = 'draft:' + today() + ':' + await anonymousBucket(request), globalKey = 'draft-global:' + today();
+        const usage = await bump(env, personalKey, 5);
+        if (usage.exceeded) { await undoBump(env, personalKey); return json({ message: '오늘 AI 초안·고객 질문 공동 한도 5회를 사용했습니다. 저장된 결과는 계속 볼 수 있습니다.' }, 429, origin); }
+        const global = await bump(env, globalKey, 100);
+        if (global.exceeded) { await Promise.all([undoBump(env, personalKey), undoBump(env, globalKey)]); return json({ message: '오늘 서비스의 AI 초안 한도에 도달했습니다.' }, 429, origin); }
         const draft = await (field === 'questions' ? generateQuestions : generateDraft)(env, scan);
-        if (draft.error) return json(draft, 503, origin);
+        if (draft.error) { await Promise.all([undoBump(env, personalKey), undoBump(env, globalKey)]); return json(draft, 503, origin); }
         // 검사 유효기간을 연장하지 않고 같은 검사에 대한 초안을 재사용한다.
         await env.DB.prepare("UPDATE scans SET result_json = json_set(result_json, ?, json(?)) WHERE url = ? AND json_extract(result_json, '$.scannedAt') = ?").bind('$.' + field, JSON.stringify(draft), target.href, scan.scannedAt).run();
         return json(draft, 200, origin);
@@ -399,11 +400,14 @@ export default {
         if (!target) return json({ message: '공개 페이지 주소를 확인해 주세요.' }, 400, origin);
         const scan = await readCache(env, target.href, Number(env.CACHE_TTL_HOURS || 24));
         if (!scan || scan.pageSkipped) return json({ message: '먼저 이 페이지를 검사해 주세요.' }, 400, origin);
-        const usage = await bump(env, 'interview:' + today() + ':' + await anonymousBucket(request), 3);
-        if (usage.exceeded) return json({ message: '오늘 운영자 인터뷰 한도 3회를 사용했습니다. 저장된 결과를 확인해 주세요.' }, 429, origin);
+        const personalKey = 'interview:' + today() + ':' + await anonymousBucket(request), globalKey = 'interview-global:' + today();
+        const usage = await bump(env, personalKey, 3);
+        if (usage.exceeded) { await undoBump(env, personalKey); return json({ message: '오늘 운영자 인터뷰 한도 3회를 사용했습니다. 저장된 결과를 확인해 주세요.' }, 429, origin); }
+        const global = await bump(env, globalKey, 100);
+        if (global.exceeded) { await Promise.all([undoBump(env, personalKey), undoBump(env, globalKey)]); return json({ message: '오늘 서비스의 운영자 인터뷰 한도에 도달했습니다.' }, 429, origin); }
         const interview = await generateInterview(env, scan, body);
-        if (interview.error) return json(interview, 503, origin);
-        return json(interview, 200, origin);
+        if (interview.error) await Promise.all([undoBump(env, personalKey), undoBump(env, globalKey)]);
+        return json(interview, interview.error ? 503 : 200, origin);
       }
       if (pathname === '/api/discovery') {
         if (request.method !== 'POST') return json({ message: 'POST 요청이 필요합니다.' }, 405, origin);

@@ -221,6 +221,10 @@ test('operator answers stay out of the shared scan cache and discovery requires 
   aiFails = true;
   assert.equal((await request('/api/discovery', { ...member, body: { url: result.url, query: '매일 쓰기 좋은 국내 그릇 쇼핑몰을 다시 추천해 주세요.' } })).status, 503);
   assert.equal(sqlite.prepare('SELECT count FROM usage WHERE key = ?').get(usageKey).count, 1);
+  assert.equal((await request('/api/draft?url='+encodeURIComponent(result.url), { body: {} })).status, 503);
+  assert.equal(sqlite.prepare("SELECT COALESCE(SUM(count),0) AS n FROM usage WHERE key LIKE 'draft:%'").get().n, 0);
+  assert.equal((await request('/api/interview', { body: { url: result.url, answers } })).status, 503);
+  assert.equal(sqlite.prepare("SELECT COALESCE(SUM(count),0) AS n FROM usage WHERE key LIKE 'interview:%'").get().n, 1);
 });
 
 test('sharing requires owned history, preserves server result and expires without consuming scans', async t => {
