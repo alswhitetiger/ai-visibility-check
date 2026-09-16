@@ -18,6 +18,7 @@ import CustomerQuestions from './CustomerQuestions';
 import OperatorInterview from './OperatorInterview';
 import DiscoveryTest from './DiscoveryTest';
 import SiteBundleAudit from './SiteBundleAudit';
+import { HistoryComparison } from './MemberDashboard';
 
 const VERSION = '2026-09-09.1';
 const STORAGE = 'shop-check:last:';
@@ -154,6 +155,10 @@ function Report({ data, previous, onScan, onExample, user }) {
   </main>;
 }
 
+function SharedComparisonReport({ data }) {
+  return <main id="report" tabIndex={-1}><HistoryComparison value={{ before: data.before, after: data.after }} shared/><p className="muted">공유 링크 만료: {dateOf(data.shareExpiresAt)}</p></main>;
+}
+
 export default function Experience() {
   const [member, setMember] = useState({ user: null, usage: null });
   const [gate, setGate] = useState(null);
@@ -277,7 +282,7 @@ export default function Experience() {
     </LandingHero>
     {gate && <MembershipGate intent={gate} onClose={()=>setGate(null)} />}
     {state.status === 'loading' && <div className="notice loading" role="status"><span className="spinner"/><div><b>페이지의 기본 정보를 확인하고 있어요</b><p>사이트 응답과 AI 질의에 따라 최대 1분 정도 걸릴 수 있어요.</p></div><button className="text-button" onClick={() => { ++serial.current; active.current?.abort(); setState({status:'idle'}); }}>취소</button></div>}
-    {state.status === 'done' && <Report data={state.data} previous={state.previous} onScan={scan} onExample={() => example(!state.data.exampleAfter)} user={member.user} />}
+    {state.status === 'done' && (state.data.kind === 'comparison' ? <SharedComparisonReport data={state.data}/> : <Report data={state.data} previous={state.previous} onScan={scan} onExample={() => example(!state.data.exampleAfter)} user={member.user} />)}
     {state.status === 'idle' && <section className="overview"><article><span>01</span><h2>AI가 읽을 정보</h2><p>AI 접근 규칙, 브랜드 소개 등<br/>기계가 읽을 기본 정보를 확인해요.</p></article><article><span>02</span><h2>고객이 볼 정보</h2><p>페이지 설명, 모바일 설정 등<br/>고객 안내에 필요한 항목을 확인해요.</p></article><article><span>03</span><h2>고치는 방법</h2><p>보완할 항목과 수정 안내를 보고<br/>다시 검사해 변화를 확인해요.</p></article></section>}
     <PublicGuide example={example} />
     {state.status !== 'done' && <PlatformGuide />}

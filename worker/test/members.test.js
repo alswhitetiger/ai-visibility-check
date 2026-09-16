@@ -100,11 +100,14 @@ test('account deletion removes the user and every account-owned record', async t
   sqlite.prepare('INSERT INTO shared_reports VALUES (?,?,?,?,?)').run('share', id, '{}', now, now + 10000);
   sqlite.prepare('INSERT INTO improvement_checks VALUES (?,?,?,?,?)').run(id, 'https://shop.example', 'title', 1, now);
   sqlite.prepare('INSERT INTO verification VALUES (?,?,?,?,?,?)').run('verify', `email-verification-otp-${email}`, 'hash', new Date(now + 10000).toISOString(), new Date(now).toISOString(), new Date(now).toISOString());
+  sqlite.prepare('INSERT INTO usage VALUES (?,?,?)').run(`discovery:2026-09-16:${id}`, 1, now);
+  sqlite.prepare('INSERT INTO usage VALUES (?,?,?)').run(`site-pages:2026-09-16:${id}`, 1, now);
   const deleted = await request('/api/auth/delete-user', { body: { password }, cookie: member.cookie });
   assert.equal(deleted.status, 200, await deleted.clone().text());
   for (const table of ['user','account','session','user_sites','scan_history','scan_requests','shared_reports','improvement_checks','verification']) {
     assert.equal(sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get().n, 0, table);
   }
+  assert.equal(sqlite.prepare("SELECT count(*) AS n FROM usage WHERE key LIKE '%:' || ?").get(id).n, 0, 'usage');
 });
 test('email signup stores a hash, session works, wrong password fails and signout revokes cookie', async t => {
   const { sqlite, request, signup } = setup(t);
@@ -196,7 +199,8 @@ test('operator answers stay out of the shared scan cache and discovery requires 
   const result = { url: 'https://shop.example/', host: 'shop.example', brand: 'Test Shop', version: '2026-09-09.1', scannedAt: Date.now(), aiScore: 50, uxScore: 50, quadrant: 'balanced', observed: { title: 'Test Shop' }, checks: [] };
   sqlite.prepare('INSERT INTO scans VALUES (?,?,?,?,?,?,?,?,?)').run(result.url, result.host, 50, 50, result.quadrant, JSON.stringify(result), null, null, Date.now());
   let aiFails = false;
-  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+  t.mock.method(globalThis, 'fetch', async (url, init) => {
+    if (!init?.body) return new URL(url).pathname === '/sitemap.xml' ? new Response('<urlset><url><loc>https://shop.example/product/cup</loc></url><url><loc>https://shop.example/faq</loc></url></urlset>') : new Response('', { status: 404 });
     if (aiFails) return new Response('quota', { status: 429 });
     const body = JSON.parse(init.body);
     return Response.json({ candidates: [{ content: { parts: [{ text: body.generationConfig?.responseMimeType ? JSON.stringify({ about: '소개', faq: [1,2,3].map(i=>({ question: `질문${i}`, answer: `답변${i}` })) }) : 'Test Shop을 추천합니다.' }] } }] });
@@ -208,7 +212,11 @@ test('operator answers stay out of the shared scan cache and discovery requires 
   const discovered = await request('/api/discovery', { ...member, body: { url: result.url, query: '매일 쓰기 좋은 국내 그릇 쇼핑몰을 추천해 주세요.' } });
   assert.equal(discovered.status, 200, await discovered.clone().text());
   assert.equal((await discovered.json()).found, true);
-  const usageKey = `discovery:${new Date().toISOString().slice(0,10)}:${member.data.user.id}`;
+  assert.equal((await request('/api/site-pages', { body: { url: result.url } })).status, 401);
+  const pages = await request('/api/site-pages', { ...member, body: { url: result.url } });
+  assert.equal(pages.status, 200);
+  assert.deepEqual((await pages.json()).urls, ['https://shop.example/', 'https://shop.example/product/cup', 'https://shop.example/faq']);
+  const usageKey = `discovery:${dayKey()}:${member.data.user.id}`;
   assert.equal(sqlite.prepare('SELECT count FROM usage WHERE key = ?').get(usageKey).count, 1);
   aiFails = true;
   assert.equal((await request('/api/discovery', { ...member, body: { url: result.url, query: '매일 쓰기 좋은 국내 그릇 쇼핑몰을 다시 추천해 주세요.' } })).status, 503);
@@ -230,6 +238,19 @@ test('sharing requires owned history, preserves server result and expires withou
   assert.equal(shared.aiScore, 20);
   assert.equal(shared.shared, true);
   assert.equal((await quota(env, a.data.user.id)).used, 0);
+  await saveHistory(env, a.data.user.id, { ...result, scannedAt: 124, aiScore: 35, checks: [{ id: 'description', label: '페이지 설명', pass: true }] });
+  const ids = sqlite.prepare('SELECT id FROM scan_history WHERE user_id = ? ORDER BY created_at, id').all(a.data.user.id).map(row => row.id);
+  assert.equal((await request('/api/member/share', { ...b, body: { result: { comparison: ids } } })).status, 400);
+  const comparisonResponse = await request('/api/member/share', { ...a, body: { result: { comparison: ids } } });
+  assert.equal(comparisonResponse.status, 200);
+  const comparisonToken = (await comparisonResponse.json()).token;
+  const comparison = await (await request('/api/share?token=' + comparisonToken)).json();
+  assert.equal(comparison.kind, 'comparison');
+  assert.equal(comparison.before.aiScore, 20);
+  assert.equal(comparison.after.aiScore, 35);
+  assert.equal(comparison.shared, true);
+  for (let i = 0; i < 31; i++) assert.equal((await request('/api/member/share', { ...a, body: { result } })).status, 200);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM shared_reports WHERE user_id = ?').get(a.data.user.id).n, 30);
   sqlite.prepare('UPDATE shared_reports SET expires_at = ?').run(Date.now() - 1);
   assert.equal((await request('/api/share?token=' + token)).status, 404);
 });

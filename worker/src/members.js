@@ -51,14 +51,29 @@ export async function saveHistory(env, userId, data, reservation) {
 export async function createSharedReport(env, userId, result) {
   const token = crypto.randomUUID() + crypto.randomUUID().replaceAll('-', '');
   const now = Date.now();
-  if (!result || typeof result.url !== 'string' || !result.scannedAt) return null;
-  const saved = await env.DB.prepare("SELECT result_json FROM scan_history WHERE user_id = ? AND url = ? AND json_extract(result_json, '$.scannedAt') = ? AND created_at >= ? LIMIT 1")
-    .bind(userId, result.url, result.scannedAt, now - 90 * 86400000).first();
-  if (!saved) return null;
-  const payload = saved.result_json;
+  let payload;
+  if (Array.isArray(result?.comparison)) {
+    const ids = [...new Set(result.comparison.filter(id => typeof id === 'string'))];
+    if (ids.length !== 2) return null;
+    const { results } = await env.DB.prepare('SELECT id, result_json FROM scan_history WHERE user_id = ? AND id IN (?, ?) AND created_at >= ?')
+      .bind(userId, ids[0], ids[1], now - 90 * 86400000).all();
+    if (results.length !== 2) return null;
+    const reports = results.map(row => JSON.parse(row.result_json)).sort((a, b) => a.scannedAt - b.scannedAt);
+    if (!reports[0].url || reports[0].url !== reports[1].url) return null;
+    payload = JSON.stringify({ kind: 'comparison', url: reports[0].url, before: reports[0], after: reports[1] });
+  } else {
+    if (!result || typeof result.url !== 'string' || !result.scannedAt) return null;
+    const saved = await env.DB.prepare("SELECT result_json FROM scan_history WHERE user_id = ? AND url = ? AND json_extract(result_json, '$.scannedAt') = ? AND created_at >= ? LIMIT 1")
+      .bind(userId, result.url, result.scannedAt, now - 90 * 86400000).first();
+    if (!saved) return null;
+    payload = saved.result_json;
+  }
   if (payload.length > 300000) return null;
   await ensureSharedReportsTable(env);
   await env.DB.prepare('DELETE FROM shared_reports WHERE expires_at <= ?').bind(now).run();
+  await env.DB.prepare(`DELETE FROM shared_reports WHERE user_id = ? AND token IN (
+    SELECT token FROM shared_reports WHERE user_id = ? ORDER BY created_at DESC, token DESC LIMIT -1 OFFSET 29
+  )`).bind(userId, userId).run();
   await env.DB.prepare('INSERT INTO shared_reports (token, user_id, result_json, created_at, expires_at) VALUES (?, ?, ?, ?, ?)')
     .bind(token, userId, payload, now, now + 30 * 86400000).run();
   return token;

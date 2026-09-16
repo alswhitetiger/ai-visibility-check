@@ -6,8 +6,9 @@ import { generateDraft } from './draft.js';
 import { generateQuestions } from './questions.js';
 import { generateInterview } from './interview.js';
 import { discoverBrand } from './discovery.js';
+import { suggestSitePages } from './site-pages.js';
 import { createAuth, sessionOf, providerStatus, mailReady, sendAuthEmail } from './auth.js';
-import { quota, reserveScan, releaseScan, saveHistory, memberRoute, publicUrl, readSharedReport } from './members.js';
+import { dayKey, quota, reserveScan, releaseScan, saveHistory, memberRoute, publicUrl, readSharedReport } from './members.js';
 
 const json = (data, status, origin) =>
   new Response(JSON.stringify(data), {
@@ -43,7 +44,7 @@ function corsOrigin(request, env) {
   return allowed.includes(origin) ? origin : allowed[0] || '*';
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = dayKey;
 
 async function anonymousBucket(request) {
   const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || 'unknown';
@@ -358,7 +359,7 @@ export default {
         return await memberRoute(request, env, session.user, json, origin);
       }
       if (pathname === '/api/health') {
-        return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now(), anonymousScan: env.ANON_SCAN_ENABLED === 'true', aiProviders: { gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY, anthropic: !!env.ANTHROPIC_API_KEY }, features: { brandBlindDiscovery: !!env.GEMINI_API_KEY }, cache: { enabled: !!env.DB, ttlHours: Number(env.CACHE_TTL_HOURS || 24) } }, 200, origin);
+        return json({ ok: true, version: DIAGNOSIS_VERSION, ts: Date.now(), anonymousScan: env.ANON_SCAN_ENABLED === 'true', aiProviders: { gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY, anthropic: !!env.ANTHROPIC_API_KEY }, features: { brandBlindDiscovery: !!env.GEMINI_API_KEY, sitemapSuggestions: true, comparisonSharing: true }, cache: { enabled: !!env.DB, ttlHours: Number(env.CACHE_TTL_HOURS || 24) } }, 200, origin);
       }
       if (pathname === '/api/extension/scan' && request.method === 'POST') {
         const body = await request.json().catch(() => null);
@@ -420,6 +421,19 @@ export default {
         const result = await discoverBrand(env, { query, host: target.host, brand: scan.brand || scan.observed?.brand || '' });
         if (result.error) await Promise.all([undoBump(env, personalKey), undoBump(env, globalKey)]);
         return json(result, result.error ? 503 : 200, origin);
+      }
+      if (pathname === '/api/site-pages') {
+        if (request.method !== 'POST') return json({ message: 'POST 요청이 필요합니다.' }, 405, origin);
+        const session = await sessionOf(request, env);
+        if (!session) return json({ message: '로그인 후 이용할 수 있습니다.' }, 401, origin);
+        const body = await request.json().catch(() => null), personalKey = `site-pages:${today()}:${session.user.id}`, globalKey = 'site-pages-global:' + today();
+        const usage = await bump(env, personalKey, 10);
+        if (usage.exceeded) { await undoBump(env, personalKey); return json({ message: '오늘 사이트맵 추천을 10회 사용했습니다.' }, 429, origin); }
+        const global = await bump(env, globalKey, 500);
+        if (global.exceeded) { await Promise.all([undoBump(env, personalKey), undoBump(env, globalKey)]); return json({ message: '오늘 서비스의 사이트맵 추천 한도에 도달했습니다.' }, 429, origin); }
+        const result = await suggestSitePages(body?.url);
+        if (result.error) await Promise.all([undoBump(env, personalKey), undoBump(env, globalKey)]);
+        return json(result, result.error ? 400 : 200, origin);
       }
       if (pathname === '/api/showcase') {
         return await handleShowcase(env, origin);

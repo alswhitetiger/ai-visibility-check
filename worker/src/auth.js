@@ -43,9 +43,12 @@ export function authOptions(env) {
       })],
     } : {}),
     socialProviders,
-    user: { deleteUser: { enabled: true, beforeDelete: user => env.DB.prepare(
-      'DELETE FROM verification WHERE value = ? OR identifier IN (?, ?, ?)'
-    ).bind(user.id, `email-verification-otp-${user.email}`, `sign-in-otp-${user.email}`, `forget-password-otp-${user.email}`).run() } },
+    user: { deleteUser: { enabled: true, beforeDelete: user => env.DB.batch([
+      env.DB.prepare('DELETE FROM verification WHERE value = ? OR identifier IN (?, ?, ?)')
+        .bind(user.id, `email-verification-otp-${user.email}`, `sign-in-otp-${user.email}`, `forget-password-otp-${user.email}`),
+      env.DB.prepare("DELETE FROM usage WHERE (key LIKE 'discovery:%' OR key LIKE 'site-pages:%') AND substr(key, -length(?)) = ?")
+        .bind(`:${user.id}`, `:${user.id}`),
+    ]) } },
     account: { encryptOAuthTokens: true, accountLinking: { enabled: true, disableImplicitLinking: true, allowDifferentEmails: true, allowUnlinkingAll: false } },
     session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 },
     rateLimit: { enabled: true, storage: 'database', window: 60, max: 40,

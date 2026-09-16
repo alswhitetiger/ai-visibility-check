@@ -12,6 +12,16 @@ function urlsOf(text, current) {
 
 export default function SiteBundleAudit({ data }) {
   const [text, setText] = useState(data.url+'\n'), [items, setItems] = useState([]), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [suggesting, setSuggesting] = useState(false), [suggestion, setSuggestion] = useState('');
+  async function suggest() {
+    setSuggesting(true); setError(''); setSuggestion('');
+    try {
+      const result = await memberApi('/api/site-pages', { url: data.url });
+      setText(result.urls.join('\n'));
+      setSuggestion(result.urls.length > 1 ? `사이트맵에서 ${result.discovered}개 주소를 확인해 핵심 페이지 ${result.urls.length}개를 골랐습니다.` : '사이트맵에서 다른 페이지를 찾지 못했습니다. 핵심 주소를 직접 추가해 주세요.');
+    } catch (failure) { setError(failure.message); }
+    finally { setSuggesting(false); }
+  }
   async function submit(event) {
     event.preventDefault(); setBusy(true); setError(''); setItems([]);
     try {
@@ -26,7 +36,8 @@ export default function SiteBundleAudit({ data }) {
   }
   const origin = new URL(data.url).origin;
   return <section className="panel bundle-audit"><p className="eyebrow">한 페이지에서 쇼핑몰 전체 흐름으로</p><h2>핵심 페이지를 묶어서 확인하세요</h2><p>메인·상품·배송·교환/환불·FAQ 주소를 한 줄에 하나씩 입력하면 페이지별 점수와 빠진 정보를 함께 보여줍니다.</p>
-    <form onSubmit={submit}><label>같은 쇼핑몰의 페이지 주소 2~5개<textarea required rows={5} value={text} onChange={event=>setText(event.target.value)} placeholder={`${origin}/\n${origin}/product/example`}/></label><button className="button secondary" disabled={busy}>{busy ? `검사 중 · ${items.length}개 완료` : '핵심 페이지 묶음 검사'}</button></form>
+    <form onSubmit={submit}><label>같은 쇼핑몰의 페이지 주소 2~5개<textarea required rows={5} value={text} onChange={event=>setText(event.target.value)} placeholder={`${origin}/\n${origin}/product/example`}/></label><div className="bundle-actions"><button type="button" className="button secondary" disabled={busy || suggesting} onClick={suggest}>{suggesting ? '사이트맵 확인 중…' : '사이트맵에서 자동 추천'}</button><button className="button primary" disabled={busy || suggesting}>{busy ? `검사 중 · ${items.length}개 완료` : '핵심 페이지 묶음 검사'}</button></div></form>
+    {suggestion && <p role="status" className="bundle-suggestion">{suggestion}</p>}
     <p className="muted">저장된 결과는 횟수를 쓰지 않으며, 새로 검사하는 페이지마다 회원 검사 횟수 1회를 사용합니다.</p>{error && <p role="alert" className="account-message">{error}</p>}
     {items.length > 0 && <div className="bundle-results">{items.map(item=><article key={item.url}><b>{new URL(item.url).pathname || '/'}</b>{item.error ? <p className="bad">{item.error}</p> : <><span>AI 정보 {item.aiScore ?? '—'} · 고객 정보 {item.uxScore ?? '—'}</span><p>{(item.checks || []).filter(check=>check.pass===false).slice(0,3).map(check=>check.label).join(' · ') || '기본 점검 항목을 통과했습니다.'}</p></>}</article>)}</div>}
   </section>;

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { memberApi, sameOrigin, loginUrl, memberBase, markSessionActive, clearSessionActive } from './member-api';
 import { HistoryComparison, HistorySparkline, ScoreSummary } from './MemberDashboard';
 import PrivacyConsent from './PrivacyConsent';
-import { useAction } from './ui-utils';
+import { copyText, useAction } from './ui-utils';
 import './account.css';
 
 const providers = { google: '구글', kakao: '카카오', naver: '네이버' };
@@ -15,8 +15,9 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
   const [siteUrl, setSiteUrl] = useState(''), [siteLabel, setSiteLabel] = useState('');
   const [deleteText, setDeleteText] = useState(''), [deletePassword, setDeletePassword] = useState('');
   const [compareBase, setCompareBase] = useState(null), [comparison, setComparison] = useState(null);
+  const [compareShare, setCompareShare] = useState({ busy: false, link: '', message: '' });
   const messageRef = useRef(null);
-  useEffect(() => { setCompareBase(null); setComparison(null); }, [user?.id]);
+  useEffect(() => { setCompareBase(null); setComparison(null); setCompareShare({ busy: false, link: '', message: '' }); }, [user?.id]);
   useEffect(() => { memberApi('/api/member/config').then(setConfig).catch(() => setMessage('회원 서비스를 연결하지 못했습니다. 잠시 후 새로고침해 주세요.')); }, []);
   useEffect(() => {
     let active = true;
@@ -88,13 +89,24 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
     });
   }
   function compareHistory(item) {
+    setCompareShare({ busy: false, link: '', message: '' });
     if (!compareBase) { setCompareBase(item); setComparison(null); return; }
     if (compareBase.id === item.id) { setCompareBase(null); setComparison(null); return; }
     if (compareBase.url !== item.url) { setCompareBase(item); setComparison(null); setMessage('같은 주소의 검사끼리 비교할 수 있어 새 기준을 선택했습니다.'); return; }
     act(async () => {
       const reports = await Promise.all([compareBase.id,item.id].map(id=>memberApi('/api/member/history?id='+encodeURIComponent(id))));
-      reports.sort((a,b)=>(a.scannedAt || 0)-(b.scannedAt || 0)); setComparison({ before: reports[0], after: reports[1] });
+      reports.sort((a,b)=>(a.scannedAt || 0)-(b.scannedAt || 0)); setComparison({ before: reports[0], after: reports[1], ids: [compareBase.id, item.id] });
     });
+  }
+  async function shareComparison() {
+    if (!comparison?.ids) return;
+    setCompareShare({ busy: true, link: '', message: '' });
+    try {
+      const created = await memberApi('/api/member/share', { result: { comparison: comparison.ids } });
+      const link = `${memberBase}?share=${encodeURIComponent(created.token)}`;
+      try { await copyText(link); setCompareShare({ busy: false, link, message: '30일 동안 열 수 있는 비교 링크를 복사했습니다.' }); }
+      catch { setCompareShare({ busy: false, link, message: '링크를 만들었습니다. 아래 주소를 선택해 복사해 주세요.' }); }
+    } catch (error) { setCompareShare({ busy: false, link: '', message: error.message }); }
   }
   return <section id="account" className="panel account-panel" aria-label="회원과 내 사이트">
     <div className="section-heading"><div><p className="eyebrow">내 가게의 개선 과정을 한곳에</p><h2>{user ? `${user.name}님의 작업 공간` : '로그인하고 검사 기록을 모아 보세요'}</h2></div>{user && <button className="button secondary small" disabled={busy} onClick={() => act(async () => { await memberApi('/api/auth/sign-out', {}); clearSessionActive(); await onRefresh(); })}>로그아웃</button>}</div>
@@ -122,7 +134,7 @@ export default function AccountPanel({ user, usage, onRefresh, onScan, onReport,
       <div className="social-logins">{Object.entries(providers).map(([p,label]) => <button key={p} className={'button secondary social-'+p} disabled={busy || !config.providers[p]} onClick={() => social(p)}>{label} 로그인{!config.providers[p] && ' · 연결 준비 중'}</button>)}</div>
     </> : <>
       <section className="dashboard-hero"><div><p className="eyebrow">내 대시보드</p><h2>오늘의 개선 상황</h2><p className="muted">사이트를 등록하고 검사 결과의 변화를 이어서 확인하세요.</p></div><div className="dashboard-quota"><strong>{usage?.remaining ?? '—'}</strong><span>오늘 남은 검사</span><small>{usage?.used ?? 0} / {usage?.limit ?? 20}회 사용</small></div></section>
-      <ScoreSummary history={history}/><HistorySparkline history={history}/><HistoryComparison value={comparison} onClear={()=>{setCompareBase(null);setComparison(null);}}/>
+      <ScoreSummary history={history}/><HistorySparkline history={history}/><HistoryComparison value={comparison} onShare={shareComparison} shareBusy={compareShare.busy} shareLink={compareShare.link} shareMessage={compareShare.message} onClear={()=>{setCompareBase(null);setComparison(null);setCompareShare({ busy: false, link: '', message: '' });}}/>
       <div className="account-usage"><b>검사 이용량</b><span>한국 시간 자정에 초기화됩니다.</span><p>새 검사와 재검사만 차감합니다. 실패한 검사·저장된 결과 조회는 차감하지 않습니다.</p></div>
       <div className="member-grid"><section><h3>내 사이트 <small>{sites.length} / 50</small></h3><form className="account-form" onSubmit={e => { e.preventDefault(); act(async () => { await memberApi('/api/member/sites', { url: siteUrl, label: siteLabel }); setSiteUrl(''); setSiteLabel(''); await onRefresh(); }); }}><label>사이트 이름<input value={siteLabel} onChange={e=>setSiteLabel(e.target.value)} maxLength={80} placeholder="예: 우리 가게" /></label><label>사이트 주소<input value={siteUrl} onChange={e=>setSiteUrl(e.target.value)} required maxLength={2048} placeholder="https://myshop.com" /></label><button className="button secondary" disabled={busy}>내 사이트에 저장</button></form>
         {!sites.length && <p className="muted">자주 검사하는 주소를 저장해 보세요.</p>}
