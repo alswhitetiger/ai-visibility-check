@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { API, sameOrigin } from './member-api';
+import { memberApi } from './member-api';
 
 const fields = [
   ['offering', '무엇을 판매하거나 제공하나요?'],
@@ -18,10 +18,7 @@ export default function OperatorInterview({ data }) {
   async function submit(e) {
     e.preventDefault(); setBusy(true); setError('');
     try {
-      const response = await fetch(API + '/api/interview', { method: 'POST', credentials: sameOrigin ? 'same-origin' : 'omit', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: data.url, answers: fields.map(([id]) => ({ id, answer: answers[id] || '' })) }) });
-      const value = await response.json();
-      if (!response.ok) throw new Error(value.message || '초안을 만들지 못했습니다.');
-      setResult(value);
+      setResult(await memberApi('/api/interview', { url: data.url, answers: fields.map(([id]) => ({ id, answer: answers[id] || '' })) }));
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }
   function updateFaq(index, key, value) { setResult({ ...result, faq: result.faq.map((item, i) => i === index ? { ...item, [key]: value } : item) }); }

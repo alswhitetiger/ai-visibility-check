@@ -1,18 +1,11 @@
-// 각 공급자를 한 번씩 호출하고 실패하면 다음 공급자로 넘어간다.
-const PROVIDERS = [
-  { name: 'gemini', keyVar: 'GEMINI_API_KEY', modelVar: 'GEMINI_MODEL', model: 'gemini-3.5-flash-lite' },
-  { name: 'openai', keyVar: 'OPENAI_API_KEY', modelVar: 'OPENAI_MODEL', model: 'gpt-5-mini' },
-  { name: 'anthropic', keyVar: 'ANTHROPIC_API_KEY', modelVar: 'ANTHROPIC_MODEL', model: 'claude-haiku-4-5-20251001' },
-];
-
+const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const TIMEOUT_MS = 10000;
 
-class ProviderError extends Error {
-  constructor(kind, status, body) {
+class GeminiError extends Error {
+  constructor(kind, status) {
     super(kind + ' ' + status);
-    this.kind = kind; // 'rate_limit' | 'server' | 'auth' | 'network'
+    this.kind = kind;
     this.status = status;
-    this.body = body;
   }
 }
 
@@ -20,9 +13,6 @@ function classify(status, body) {
   if (status === 429) return 'rate_limit';
   if (status >= 500) return 'server';
   if (status === 401 || status === 403) return 'auth';
-  // Gemini 무료 티어는 요청이 나간 위치를 지원 지역으로 인정하지 않으면
-  // 400 FAILED_PRECONDITION 을 낸다. 키나 요청이 잘못된 게 아니라 위치 문제라
-  // 다음 공급자로 넘어간다.
   if (status === 400 && /location is not supported/i.test(body || '')) return 'region';
   return 'client';
 }
@@ -34,12 +24,12 @@ async function post(url, init) {
     const res = await fetch(url, { ...init, signal: ctl.signal });
     if (!res.ok) {
       const body = await res.text();
-      throw new ProviderError(classify(res.status, body), res.status, body);
+      throw new GeminiError(classify(res.status, body), res.status);
     }
     return await res.json();
   } catch (e) {
-    if (e instanceof ProviderError) throw e;
-    throw new ProviderError('network', 0, String(e));
+    if (e instanceof GeminiError) throw e;
+    throw new GeminiError('network', 0);
   } finally {
     clearTimeout(timer);
   }
@@ -55,95 +45,38 @@ function extractJson(text) {
   try { return JSON.parse(raw.slice(start, end + 1)); } catch { return null; }
 }
 
-async function callGemini(key, model, system, user) {
+async function callGemini(env, system, user, json = true) {
+  const model = env.GEMINI_MODEL || DEFAULT_MODEL;
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent';
   const data = await post(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
+      generationConfig: { temperature: 0.2, ...(json ? { responseMimeType: 'application/json' } : {}) },
     }),
   });
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  return { model, text: (data?.candidates?.[0]?.content?.parts || []).map(part => part.text || '').join('').trim() };
 }
 
-async function callOpenAI(key, model, system, user) {
-  const data = await post('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-      response_format: { type: 'json_object' },
-    }),
-  });
-  return data?.choices?.[0]?.message?.content || '';
-}
-
-async function callAnthropic(key, model, system, user) {
-  const data = await post('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 2048,
-      system,
-      messages: [{ role: 'user', content: user }],
-    }),
-  });
-  return data?.content?.[0]?.text || '';
-}
-
-const CALLERS = { gemini: callGemini, openai: callOpenAI, anthropic: callAnthropic };
-
-/**
- * 세 프로바이더를 하나로 감싼다. 뒷단 코드는 누가 답했는지 몰라도 된다.
- * @returns {{ ok: true, provider: string, model: string, json: object }}
- *        | {{ ok: false, reason: 'exhausted', tried: object[] }}
- */
 export async function askAI(env, { system, user }) {
-  const tried = [];
-
-  for (const p of PROVIDERS) {
-    const key = env[p.keyVar];
-    if (!key) { tried.push({ provider: p.name, skipped: 'no_key' }); continue; }
-    const model = env[p.modelVar] || p.model;
-
-    try {
-      const text = await CALLERS[p.name](key, model, system, user);
-      const json = extractJson(text);
-      if (!json) throw new ProviderError('client', 200, 'unparseable');
-      return { ok: true, provider: p.name, model, json };
-    } catch (e) {
-      tried.push({ provider: p.name, kind: e.kind || 'network', status: e.status });
-    }
+  if (!env.GEMINI_API_KEY) return { ok: false, tried: [{ provider: 'gemini', skipped: 'no_key' }] };
+  try {
+    const { model, text } = await callGemini(env, system, user);
+    const json = extractJson(text);
+    if (!json) throw new GeminiError('client', 200);
+    return { ok: true, provider: 'gemini', model, json };
+  } catch (error) {
+    return { ok: false, tried: [{ provider: 'gemini', kind: error.kind || 'network', status: error.status || 0 }] };
   }
-
-  return { ok: false, reason: 'exhausted', tried };
 }
 
 export async function queryGemini(env, query) {
   if (!env.GEMINI_API_KEY) return { ok: false, kind: 'no_key' };
-  const model = env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
   try {
-    const data = await post(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: '일반 소비자의 질문에 한국어로 답하세요. 질문에 없는 특정 브랜드를 미리 알려고 하거나 추측하지 말고, 알고 있는 범위만 답하세요.' }] },
-        contents: [{ role: 'user', parts: [{ text: query }] }],
-        generationConfig: { temperature: 0.2 },
-      }),
-    });
-    const candidate = data?.candidates?.[0];
-    const text = (candidate?.content?.parts || []).map(part => part.text || '').join('').trim();
-    if (!text) throw new ProviderError('client', 200, 'empty');
+    const { model, text } = await callGemini(env, '일반 소비자의 질문에 한국어로 답하세요. 질문에 없는 특정 브랜드를 미리 알려고 하거나 추측하지 말고, 알고 있는 범위만 답하세요.', query, false);
+    if (!text) throw new GeminiError('client', 200);
     return { ok: true, provider: 'gemini', model, text: text.slice(0, 5000), generatedAt: Date.now() };
   } catch (error) {
     return { ok: false, kind: error.kind || 'network', status: error.status || 0 };

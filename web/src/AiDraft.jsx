@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { API, sameOrigin } from './member-api';
+import { memberApi } from './member-api';
 import { copyText } from './ui-utils';
 
 export default function AiDraft({ data }) {
@@ -11,9 +11,7 @@ export default function AiDraft({ data }) {
   async function generate() {
     setBusy(true); setMessage('');
     try {
-      const response = await fetch(API + '/api/draft?url=' + encodeURIComponent(data.url), { method: 'POST', credentials: sameOrigin ? 'same-origin' : 'omit' });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || '초안을 받지 못했습니다.');
+      const result = await memberApi('/api/draft?url=' + encodeURIComponent(data.url), {});
       setDraft(result); setSelected(result.options[0]); setConfirmed(false);
     } catch (e) { setMessage(e.message); }
     finally { setBusy(false); }

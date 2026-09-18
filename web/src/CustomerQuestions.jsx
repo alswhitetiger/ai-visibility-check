@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { API, sameOrigin } from './member-api';
+import { memberApi } from './member-api';
 
 const labels = { answered: '답변 근거 있음', partial: '일부 정보만 확인', unknown: '자료에서 확인 못함' };
 export default function CustomerQuestions({ data }) {
@@ -9,10 +9,7 @@ export default function CustomerQuestions({ data }) {
   async function check() {
     setBusy(true); setError('');
     try {
-      const response = await fetch(API + '/api/questions?url=' + encodeURIComponent(data.url), { method: 'POST', credentials: sameOrigin ? 'same-origin' : 'omit' });
-      const value = await response.json();
-      if (!response.ok) throw new Error(value.message || '질문 검사를 완료하지 못했습니다.');
-      setResult(value);
+      setResult(await memberApi('/api/questions?url=' + encodeURIComponent(data.url), {}));
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }

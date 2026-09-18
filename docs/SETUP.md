@@ -33,9 +33,6 @@ GitHub Actions 워크플로가 활성화되어 있다. `main` 의 `web/**` 이 �
 
 **주소: https://alswhitetiger.github.io/ai-visibility-check/**
 
-Actions가 막힐 때를 위한 예비 경로로 `scripts/deploy-pages.sh` 를 남겨 두었다.
-gh-pages 브랜치로 직접 밀어 넣는 방식이며, Pages 소스를 브랜치로 되돌리면 쓸 수 있다.
-
 ## 1단계 — GitHub Pages (실시간 분석 없이 먼저 배포)
 
 프론트만 올린다. 이 단계에서 이미 제출 가능한 링크가 생긴다.
@@ -61,8 +58,6 @@ npm run db:remote
 
 # API 키는 secret 으로만 등록한다. 절대 커밋하지 않는다.
 npx wrangler secret put GEMINI_API_KEY
-npx wrangler secret put OPENAI_API_KEY
-npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put JUDGE_CODE      # 심사위원 우회 코드
 
 npm run deploy
@@ -85,7 +80,7 @@ npm run deploy
 | 설정 | 기본값 | 의미 |
 |---|---|---|
 | `DAILY_SCAN_LIMIT` | 400 | 하루 전체 분석 상한 |
-| `IP_DAILY_LIMIT` | 5 | IP 하나당 하루 상한 |
+| `ANON_DAILY_LIMIT` | 1 | 비회원 IP 하나당 하루 상한 |
 | `CACHE_TTL_HOURS` | 24 | 같은 URL 재사용 기간 |
 | `JUDGE_CODE` | (secret) | 심사위원용 우회 코드. 공개 저장소에 값을 남기지 않으려고 secret 으로 둔다 |
 
